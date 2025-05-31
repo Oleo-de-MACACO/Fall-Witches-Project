@@ -26,4 +26,5 @@ typedef struct {
 
 void init_player(Player *p, const char *nome, Classe classe);
 
+
 #endif

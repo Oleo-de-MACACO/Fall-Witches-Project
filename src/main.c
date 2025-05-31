@@ -1,191 +1,107 @@
-#include <stddef.h>
-#include <unistd.h>
-#include "../include/Game.h"
+#include <stddef.h>     // Para NULL
+// #include <unistd.h>  // Removido se não estritamente necessário, geralmente stddef.h é suficiente para NULL
+#include "raylib.h"
+#include "../include/Game.h"    // Para GameState e protótipos de Game.c
+#include "../include/Classes.h" // Para a struct Player
 
-void *pixels();
+// --- Constantes e Variáveis Globais de main.c (ou no escopo de main) ---
+const int SCREEN_WIDTH = 800;   //
+const int SCREEN_HEIGHT = 450;  //
 
-int main(void){
-  int i;
-  float music_timer = 0;
-  float music_duration = 0;
-  float volume = 0.5f;
-  unsigned int screen_width = 800;
-  unsigned int screen_height = 450;
-  Player player[MAX_PLAYERS];
-  Color color[MAX_SIZE] = {GREEN, RED};
+// Dados do Jogo
+Player players[MAX_PLAYERS];        //
+Texture2D player1Texture;
+Music gamePlaylist[MAX_SIZE];       //
 
-  for(i = 0; i < MAX_PLAYERS; i++){
-    player[i].width = 80;
-    player[i].height = 80;
+GameState currentScreen;
+int introScreenFramesCounter = 0;   // Contador de frames para a tela de intro
 
-    if(i == 0){
-      player[i].posx = player[i].width;
-      player[i].posy = player[i].height;
+// Estado da Música
+int currentPlaylistIndex = 0;       //
+int musicIsPlaying = 1;             //
+float musicVolume = 0.5f;           //
+float musicPlayTimer = 0.0f;        //
+float currentTrackDuration = 0.0f;  //
+
+
+int main(void) { //
+    // Inicialização
+    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_BORDERLESS_WINDOWED_MODE | FLAG_WINDOW_RESIZABLE); //
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fall Witches - Nome temp"); //
+    InitAudioDevice(); //
+
+    // Carrega recursos e inicializa dados do jogo (função de Game.c)
+    InitGameResources(players, &player1Texture, gamePlaylist);
+
+    currentScreen = GAMESTATE_INTRO; // Define a cena inicial
+
+    // Inicia a primeira música, se houver
+    if (gamePlaylist[currentPlaylistIndex].frameCount > 0 && gamePlaylist[currentPlaylistIndex].stream.buffer != NULL) { // Checa se a música é válida
+        PlayMusicStream(gamePlaylist[currentPlaylistIndex]); //
+        SetMusicVolume(gamePlaylist[currentPlaylistIndex], musicVolume); //
+        musicIsPlaying = 1; //
+        currentTrackDuration = GetMusicTimeLength(gamePlaylist[currentPlaylistIndex]); //
+        musicPlayTimer = 0.0f; //
+    } else {
+        musicIsPlaying = 0; //
     }
 
-    if(i == 1){
-      player[i].posx = screen_width - player[i].width;
-      player[i].posy = 0 + player[i].height;
-    }
-  }
+    SetTargetFPS(60); //
 
-  SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN);
-  SetConfigFlags(FLAG_BORDERLESS_WINDOWED_MODE);
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  InitWindow(screen_width, screen_height, "Fall Witches");
-  InitAudioDevice();
-
-  const char *image = "./assets/images/player1.png";
-  player[1].txr = LoadTexture(image);
-  player[1].txr.width = 80;
-  player[1].txr.height = 80;
-
-  const char *musics[MAX_SIZE] = {
-    "./assets/songs/Desmeon_-_My_Sunshine.ogg",
-    "./assets/songs/19 William Tell Overture.ogg",
-    "./assets/songs/last-summer-by-ikson.mp3",
-    "./assets/songs/Floatinurboat - Spirit Of Things.mp3"
-  };
-
-  Music playlist[MAX_SIZE];
-
-  for(i = 0; i < MAX_SIZE; i++){
-    playlist[i] = LoadMusicStream(musics[i]);
-    if((playlist[i].stream.buffer) == NULL){
-      TraceLog(LOG_WARNING, "Musica %d n�o foi carregada\n", i+1);
-    }
-  }
-
-  int cur_music = 0;
-  int isPlaying = 1; // 1 quando a m�sica est� tocando e 0 quando a m�sica est� parada
-
-  PlayMusicStream(playlist[cur_music]);
-  SetMusicVolume(playlist[cur_music], volume);
-
-  SetTargetFPS(30);
-
-  while (!WindowShouldClose()){
-
-    float scaleX = (float)GetScreenWidth() / screen_width;
-    float scaleY = (float)GetScreenHeight() / screen_height;
-
-    if(isPlaying){
-      UpdateMusicStream(playlist[cur_music]);
-      music_duration = GetMusicTimeLength(playlist[cur_music]);
-      music_timer += GetFrameTime();
-    }
-
-		// pausa a m�sica
-    if(IsKeyPressed(KEY_SLASH)){
-      if(isPlaying){
-        ResumeMusicStream(playlist[cur_music]);
-        isPlaying = 1;
-      } else {
-        PauseMusicStream(playlist[cur_music]);
-        isPlaying = 0;
-      }
-    }
-
-    // pr�xima m�sica
-    if(IsKeyPressed(KEY_PAGE_DOWN)){
-      if(isPlaying){
-        StopMusicStream(playlist[cur_music]);
-        isPlaying = 0;
-
-        cur_music++;
-        if(cur_music == MAX_SIZE){
-          cur_music = 0;
+    // --- Laço Principal do Jogo ---
+    while (!WindowShouldClose()) { //
+        // --- Lógica de Atualização (Update) ---
+        switch (currentScreen) {
+            case GAMESTATE_MENU:
+                UpdateMenuScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, musicVolume, &musicIsPlaying);
+                break;
+            case GAMESTATE_INTRO:
+                UpdateIntroScreen(&currentScreen, &introScreenFramesCounter);
+                break;
+            case GAMESTATE_PLAYING:
+                UpdatePlayingScreen(&currentScreen, players, player1Texture, gamePlaylist, &currentPlaylistIndex, &musicVolume, &musicIsPlaying, &musicPlayTimer, &currentTrackDuration);
+                break;
+            case GAMESTATE_PAUSE:
+                UpdatePauseScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, musicIsPlaying);
+                break;
+            default:
+                break;
         }
 
-        PlayMusicStream(playlist[cur_music]);
-        isPlaying = 1;
-      }
+        // --- Lógica de Desenho (Draw) ---
+        BeginDrawing(); //
+            ClearBackground(RAYWHITE); // Limpa a tela com uma cor base (pode ser sobrescrito pela cena)
+
+            switch (currentScreen) {
+                case GAMESTATE_MENU:
+                    DrawMenuScreen();
+                    break;
+                case GAMESTATE_INTRO:
+                    DrawIntroScreen();
+                    break;
+                case GAMESTATE_PLAYING:
+                    DrawPlayingScreen(players, player1Texture, musicVolume, currentPlaylistIndex, musicIsPlaying);
+                    break;
+                case GAMESTATE_PAUSE:
+                    DrawPauseScreen(players, player1Texture, musicVolume, currentPlaylistIndex, musicIsPlaying);
+                    break;
+                default:
+                    DrawText("ESTADO DESCONHECIDO!", 20, 20, 20, RED);
+                    break;
+            }
+        EndDrawing(); //
     }
 
-    // m�sica anterior
-    if(IsKeyPressed(KEY_PAGE_UP)){
-      if(isPlaying){
-        StopMusicStream(playlist[cur_music]);
-        isPlaying = 0;
+    // --- Desinicialização ---
+    if (player1Texture.id > 0) { UnloadTexture(player1Texture); } //
+    // Se player[1].txr for uma textura separada, descarregue-a também.
+    // No InitGameResources, player[1].txr pode receber player1Texture, então descarregar player1Texture já basta.
 
-        cur_music--;
-        if(cur_music < 0){
-          cur_music = MAX_SIZE - 1;
-        }
-
-        PlayMusicStream(playlist[cur_music]);
-        isPlaying = 1;
-      }
+    for (int i = 0; i < MAX_SIZE; i++) { //
+        if (gamePlaylist[i].stream.buffer != NULL) { UnloadMusicStream(gamePlaylist[i]); } //
     }
 
-    if(IsKeyPressed(KEY_ZERO)){
-        if(isPlaying){
-            volume = 0.0f;
-            SetMusicVolume(playlist[cur_music], volume);
-        }
-    }
-
-    if(IsKeyPressed(KEY_MINUS)){
-      if(isPlaying){
-        volume -= 0.05f;
-        if(volume <= 0.0f){
-          volume = 0.0f;
-        }
-        SetMusicVolume(playlist[cur_music], volume);
-      }
-    }
-
-    if(IsKeyPressed(KEY_EQUAL)){
-      if(isPlaying){
-        volume += 0.05f;
-        if(volume >= 1.0f){
-          volume = 1.0f;
-        }
-        SetMusicVolume(playlist[cur_music], volume);
-      }
-    }
-
-    // verifica se a m�sica terminou
-    if(music_timer >= music_duration){
-			StopMusicStream(playlist[cur_music]);
-
-			cur_music++;
-			if(cur_music > MAX_SIZE - 1){
-				cur_music = 0;
-			}
-
-			PlayMusicStream(playlist[cur_music]);
-    }
-
-    move_character(&player[1].posx, &player[1].posy, screen_width, screen_height, KEY_A, KEY_D, KEY_W, KEY_S, KEY_LEFT_SHIFT);
-    move_character(&player[0].posx, &player[0].posy, screen_width, screen_height, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_RIGHT_SHIFT);
-
-    Vector2 mouse = GetMousePosition();
-
-    BeginDrawing();
-      ClearBackground(BLACK);
-
-      UpdateTexture(player[1].txr, pixels);
-
-      DrawFPS(5, 20);
-      DrawText(TextFormat("X: %d, Y: %d", (int)mouse.x, (int)mouse.y), 5, 40, 18, DARKGRAY);
-      DrawRectangle(0, 0, screen_width, 20, DARKGRAY);
-      DrawTexture(player[1].txr, player[1].posx, player[1].posy, RAYWHITE);
-      DrawRectangle(player[0].posx, player[0].posy, player[0].width, player[0].height, color[0]);
-    EndDrawing();
-  }
-
-  UnloadTexture(player[1].txr);
-
-  for(i = 0; i < MAX_SIZE; i++){
-    UnloadMusicStream(playlist[i]);
-  }
-
-  CloseAudioDevice();
-  CloseWindow();
-  return 0;
-}
-
-void *pixels(){
-
+    CloseAudioDevice(); //
+    CloseWindow();      //
+    return 0; //
 }
