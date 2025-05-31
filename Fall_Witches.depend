@@ -1,0 +1,64 @@
+# depslib dependency file v1.0
+1748462215 source:c:\users\anton\onedrive\햞ea de trabalho\fall_witches\main.c
+	"raylib.h"
+
+1748531963 
+
+1748465445 source:c:\users\anton\onedrive\햞ea de trabalho\fall_witches\src\game.c
+	"../include/Game.h"
+
+1748530519 e/Game.h"
+
+1748468505 c:\users\anton\onedrive\햞ea de trabalho\fall_witches\include\game.h
+	"raylib.h"
+	"Classes.h"
+
+1748526370 "
+
+1747982718 c:\users\anton\onedrive\햞ea de trabalho\fall_witches\include\classes.h
+
+1748465457 source:c:\users\anton\onedrive\햞ea de trabalho\fall_witches\src\classes.c
+	"../include/Classes.h"
+	<string.h>
+
+1748465565 source:c:\users\anton\onedrive\햞ea de trabalho\fall_witches\src\main.c
+	<stddef.h>
+	<unistd.h>
+	"../include/Game.h"
+
+1748529686 source:c:\users\aluno\desktop\fall_witches\fall_witches\src\game.c
+	"../include/Game.h"
+
+1748526370 c:\users\aluno\desktop\fall_witches\fall_witches\include\game.h
+	"raylib.h"
+	"Classes.h"
+
+1748531962 c:\users\aluno\desktop\fall_witches\fall_witches\include\classes.h
+
+1748530519 source:c:\users\aluno\desktop\fall_witches\fall_witches\src\main.c
+	<stddef.h>
+	<unistd.h>
+	"../include/Game.h"
+
+1748531963 source:c:\users\aluno\desktop\fall_witches\fall_witches\src\classes.c
+	"../include/Classes.h"
+	<string.h>
+
+1748531964 source:/home/iago/Desktop/Fall_Witches/Fall_Witches/src/Classes.c
+	"../include/Classes.h"
+	<string.h>
+
+1748576530 /home/iago/Desktop/Fall_Witches/Fall_Witches/include/Classes.h
+	"raylib.h"
+
+1748578229 source:/home/iago/Desktop/Fall_Witches/Fall_Witches/src/Game.c
+	"../include/Game.h"
+
+1748577936 /home/iago/Desktop/Fall_Witches/Fall_Witches/include/Game.h
+	"Classes.h"
+
+1748577015 source:/home/iago/Desktop/Fall_Witches/Fall_Witches/src/main.c
+	<stddef.h>
+	<unistd.h>
+	"../include/Game.h"
+

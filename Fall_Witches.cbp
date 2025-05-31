@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Fall_Witches" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug-Windows">
+				<Option output="bin/Debug-Windows/Fall_Witches" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-std=c99" />
+					<Add option="-g" />
+				</Compiler>
+				<Linker>
+					<Add option="-O2" />
+					<Add option="-lraylib -lopengl32 -lgdi32 -lwinmm" />
+					<Add library="../../../../../raylib/w64devkit/x86_64-w64-mingw32/lib/libraylib.a" />
+				</Linker>
+			</Target>
+			<Target title="Release-Windows">
+				<Option output="bin/Release-Windows/Fall_Witches" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add option="-lraylib -lopengl32 -lgdi32 -lwinmm" />
+					<Add library="../../../../../raylib/w64devkit/x86_64-w64-mingw32/lib/libraylib.a" />
+				</Linker>
+			</Target>
+			<Target title="Debug-Linux">
+				<Option output="bin/Debug-Linux/Fall_Witches" prefix_auto="1" extension_auto="1" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Linker>
+					<Add option="-lraylib -lGL -lm -lpthread -ldl -lrt -lX11" />
+					<Add library="../../../../../usr/local/lib/libraylib.so" />
+				</Linker>
+			</Target>
+			<Target title="Release-Linux">
+				<Option output="bin/Release-Linux/Fall_Witches" prefix_auto="1" extension_auto="1" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Linker>
+					<Add option="-lraylib -lGL -lm -lpthread -ldl -lrt -lX11" />
+					<Add library="../../../../../usr/local/lib/libraylib.so" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+		</Compiler>
+		<Unit filename="assets/LEIA-ME.txt" />
+		<Unit filename="assets/songs/19 William Tell Overture.ogg" />
+		<Unit filename="assets/songs/Desmeon_-_My_Sunshine.ogg" />
+		<Unit filename="assets/songs/Floatinurboat - Spirit Of Things.mp3" />
+		<Unit filename="assets/songs/last-summer-by-ikson.mp3" />
+		<Unit filename="include/Classes.h" />
+		<Unit filename="include/Game.h" />
+		<Unit filename="src/Classes.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/Game.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="src/main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Extensions>
+			<lib_finder disable_auto="1" />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
