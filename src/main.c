@@ -1,56 +1,58 @@
-#include <stddef.h>     // Para NULL
-// #include <unistd.h>  // Removido se não estritamente necessário, geralmente stddef.h é suficiente para NULL
-#include "raylib.h"
-#include "../include/Game.h"    // Para GameState e protótipos de Game.c
-#include "../include/Classes.h" // Para a struct Player
+#include <stddef.h>     
+#include "raylib.h"     
+#include "../include/Game.h"    
+#include "../include/Classes.h" 
 
-// --- Constantes e Variáveis Globais de main.c (ou no escopo de main) ---
-const int SCREEN_WIDTH = 800;   //
-const int SCREEN_HEIGHT = 450;  //
+// --- Constantes e Variáveis Globais de main.c ---
+const int SCREEN_WIDTH = 800;   
+const int SCREEN_HEIGHT = 450;  
 
-// Dados do Jogo
-Player players[MAX_PLAYERS];        //
-Texture2D player1Texture;
-Music gamePlaylist[MAX_SIZE];       //
+Player players[MAX_PLAYERS];        // Array para armazenar os dados dos jogadores
+// Texture2D player1Texture;        // REMOVIDA - Cada jogador terá sua textura em sua struct
+Music gamePlaylist[MAX_SIZE];       
 
-GameState currentScreen;
-int introScreenFramesCounter = 0;   // Contador de frames para a tela de intro
+GameState currentScreen;            
+int introScreenFramesCounter = 0;   
 
 // Estado da Música
-int currentPlaylistIndex = 0;       //
-int musicIsPlaying = 1;             //
-float musicVolume = 0.5f;           //
-float musicPlayTimer = 0.0f;        //
-float currentTrackDuration = 0.0f;  //
+int currentPlaylistIndex = 0;       
+int musicIsPlaying = 1;             
+float musicVolume = 0.5f;           
+float musicPlayTimer = 0.0f;        
+float currentTrackDuration = 0.0f;  
+
+// --- Coordenadas e Limites do Mapa ---
+int g_currentMapX = 0; 
+int g_currentMapY = 0; 
+
+const int WORLD_MAP_MIN_X = -10; 
+const int WORLD_MAP_MAX_X = 10; 
+const int WORLD_MAP_MIN_Y = -10; 
+const int WORLD_MAP_MAX_Y = 10; 
 
 
-int main(void) { //
-    // Inicialização
-    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_BORDERLESS_WINDOWED_MODE | FLAG_WINDOW_RESIZABLE); //
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fall Witches - Nome temp"); //
-    InitAudioDevice(); //
+int main(void) { 
+    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_BORDERLESS_WINDOWED_MODE | FLAG_WINDOW_RESIZABLE); 
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Fall Witches - Sprites para Ambos"); 
+    InitAudioDevice(); 
 
-    // Carrega recursos e inicializa dados do jogo (função de Game.c)
-    InitGameResources(players, &player1Texture, gamePlaylist);
+    // CORRIGIDO: Não passa mais &player1Texture
+    InitGameResources(players, gamePlaylist);
+    currentScreen = GAMESTATE_INTRO; 
 
-    currentScreen = GAMESTATE_INTRO; // Define a cena inicial
-
-    // Inicia a primeira música, se houver
-    if (gamePlaylist[currentPlaylistIndex].frameCount > 0 && gamePlaylist[currentPlaylistIndex].stream.buffer != NULL) { // Checa se a música é válida
-        PlayMusicStream(gamePlaylist[currentPlaylistIndex]); //
-        SetMusicVolume(gamePlaylist[currentPlaylistIndex], musicVolume); //
-        musicIsPlaying = 1; //
-        currentTrackDuration = GetMusicTimeLength(gamePlaylist[currentPlaylistIndex]); //
-        musicPlayTimer = 0.0f; //
+    if (gamePlaylist[currentPlaylistIndex].frameCount > 0 && gamePlaylist[currentPlaylistIndex].stream.buffer != NULL) {
+        PlayMusicStream(gamePlaylist[currentPlaylistIndex]); 
+        SetMusicVolume(gamePlaylist[currentPlaylistIndex], musicVolume); 
+        musicIsPlaying = 1; 
+        currentTrackDuration = GetMusicTimeLength(gamePlaylist[currentPlaylistIndex]); 
+        musicPlayTimer = 0.0f; 
     } else {
-        musicIsPlaying = 0; //
+        musicIsPlaying = 0; 
     }
 
-    SetTargetFPS(60); //
+    SetTargetFPS(60); 
 
-    // --- Laço Principal do Jogo ---
-    while (!WindowShouldClose()) { //
-        // --- Lógica de Atualização (Update) ---
+    while (!WindowShouldClose()) { 
         switch (currentScreen) {
             case GAMESTATE_MENU:
                 UpdateMenuScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, musicVolume, &musicIsPlaying);
@@ -59,7 +61,9 @@ int main(void) { //
                 UpdateIntroScreen(&currentScreen, &introScreenFramesCounter);
                 break;
             case GAMESTATE_PLAYING:
-                UpdatePlayingScreen(&currentScreen, players, player1Texture, gamePlaylist, &currentPlaylistIndex, &musicVolume, &musicIsPlaying, &musicPlayTimer, &currentTrackDuration);
+                UpdatePlayingScreen(&currentScreen, players, gamePlaylist, &currentPlaylistIndex, &musicVolume, 
+                                    &musicIsPlaying, &musicPlayTimer, &currentTrackDuration, 
+                                    &g_currentMapX, &g_currentMapY);
                 break;
             case GAMESTATE_PAUSE:
                 UpdatePauseScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, musicIsPlaying);
@@ -68,9 +72,8 @@ int main(void) { //
                 break;
         }
 
-        // --- Lógica de Desenho (Draw) ---
-        BeginDrawing(); //
-            ClearBackground(RAYWHITE); // Limpa a tela com uma cor base (pode ser sobrescrito pela cena)
+        BeginDrawing(); 
+            ClearBackground(RAYWHITE); 
 
             switch (currentScreen) {
                 case GAMESTATE_MENU:
@@ -80,28 +83,35 @@ int main(void) { //
                     DrawIntroScreen();
                     break;
                 case GAMESTATE_PLAYING:
-                    DrawPlayingScreen(players, player1Texture, musicVolume, currentPlaylistIndex, musicIsPlaying);
+                    // CORRIGIDO: Não passa mais player1Texture
+                    DrawPlayingScreen(players, musicVolume, currentPlaylistIndex, musicIsPlaying, g_currentMapX, g_currentMapY);
                     break;
                 case GAMESTATE_PAUSE:
-                    DrawPauseScreen(players, player1Texture, musicVolume, currentPlaylistIndex, musicIsPlaying);
+                    // CORRIGIDO: Não passa mais player1Texture
+                    DrawPauseScreen(players, musicVolume, currentPlaylistIndex, musicIsPlaying, g_currentMapX, g_currentMapY);
                     break;
                 default:
                     DrawText("ESTADO DESCONHECIDO!", 20, 20, 20, RED);
                     break;
             }
-        EndDrawing(); //
+        EndDrawing(); 
     }
 
-    // --- Desinicialização ---
-    if (player1Texture.id > 0) { UnloadTexture(player1Texture); } //
-    // Se player[1].txr for uma textura separada, descarregue-a também.
-    // No InitGameResources, player[1].txr pode receber player1Texture, então descarregar player1Texture já basta.
+    // --- Fase de Desinicialização ---
+    // Descarrega as texturas de CADA jogador
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (players[i].txr.id > 0) { // Verifica se a textura do jogador i é válida
+            UnloadTexture(players[i].txr);
+            TraceLog(LOG_INFO, "Textura do Jogador %d descarregada.", i);
+        }
+    }
+    // if (player1Texture.id > 0) { UnloadTexture(player1Texture); } // Linha antiga removida
 
-    for (int i = 0; i < MAX_SIZE; i++) { //
-        if (gamePlaylist[i].stream.buffer != NULL) { UnloadMusicStream(gamePlaylist[i]); } //
+    for (int i = 0; i < MAX_SIZE; i++) { 
+        if (gamePlaylist[i].stream.buffer != NULL) { UnloadMusicStream(gamePlaylist[i]); } 
     }
 
-    CloseAudioDevice(); //
-    CloseWindow();      //
-    return 0; //
+    CloseAudioDevice(); 
+    CloseWindow();      
+    return 0; 
 }
