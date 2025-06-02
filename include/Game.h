@@ -5,43 +5,48 @@
 #include "raylib.h"
 
 // --- Constantes do Jogo ---
-#define MAX_SIZE 4      // Tamanho máximo para arrays (ex: playlist de música)
-#define MAX_PLAYERS 2   // Número máximo de jogadores
-#define PLAYER_SIZE 20  // Tamanho do jogador (usado em algum lugar? verificar uso)
+#define MAX_MUSIC_PLAYLIST_SIZE 4 
+#define MAX_PLAYERS_SUPPORTED 2   
 
 // --- Estados do Jogo (Cenas) ---
 typedef enum {
-    GAMESTATE_MENU,
-    GAMESTATE_INTRO,
-    GAMESTATE_PLAYER_MODE_MENU,
-    GAMESTATE_CHARACTER_CREATION, // Estado para criação de personagem
-    GAMESTATE_PLAYING,
-    GAMESTATE_PAUSE,
-    GAMESTATE_INVENTORY,
-    GAMESTATE_SAVE_LOAD_MENU
+    GAMESTATE_MENU, GAMESTATE_INTRO, GAMESTATE_PLAYER_MODE_MENU,
+    GAMESTATE_CHARACTER_CREATION, GAMESTATE_PLAYING, GAMESTATE_PAUSE,
+    GAMESTATE_INVENTORY, GAMESTATE_SAVE_LOAD_MENU
 } GameState;
 
+// Tipos de Modo de Jogo
+typedef enum {
+    GAME_MODE_UNINITIALIZED = -1, 
+    GAME_MODE_SINGLE_PLAYER,
+    GAME_MODE_TWO_PLAYER
+} GameModeType;
+
+// NOVO: Enum para detecção de borda, movido para cá para ser global
+typedef enum { 
+    BORDER_NONE = 0, 
+    BORDER_LEFT, 
+    BORDER_RIGHT, 
+    BORDER_TOP, 
+    BORDER_BOTTOM 
+} BorderDirection;
+
+// Variáveis globais (definidas em main.c)
+extern GameModeType currentGameMode;
+extern int currentActivePlayers; 
+
 // --- Protótipos das Funções de Lógica do Jogo (implementadas em Game.c) ---
-
-// Declaração de move_character MODIFICADA: removidos screenWidth e screenHeight,
-// pois agora usará virtualScreenWidth/Height internamente.
-void move_character(int *posx_ptr, int *posy_ptr, int pWidth, int pHeight,
-                    int keyLeft, int keyRight, int keyUp, int keyDown, int keyShift);
-
-void InitGameResources(Player players[], Music mainPlaylist[]);
-
-// Declaração de PrepareNewGameSession MODIFICADA: removidos screenWidth e screenHeight,
-// pois agora usará virtualScreenWidth/Height internamente para posicionar jogadores.
-void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY);
-
-// Desenha a tela de jogo. Assume que está sendo chamada dentro de um BeginTextureMode(targetRenderTexture).
-// O layout interno (UI, etc.) usará virtualScreenWidth/Height.
-void DrawPlayingScreen(Player players[], float currentVolume, int currentMusicIndex, int isPlaying, int currentMapX, int currentMapY);
-
-// Atualiza a lógica da tela de jogo.
-void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players[], Music playlist[],
+void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, int keyDown, int keyShift);
+void InitGameResources(Player players_arr[], Music mainPlaylist_arr[]);
+void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY, int numActivePlayers); 
+void DrawPlayingScreen(Player players_arr[], int numActivePlayers, float currentVolume, int currentMusicIndex, int isPlaying, int currentMapX, int currentMapY);
+void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int numActivePlayers, Music playlist_arr[],
                          int *currentMusicIndex_ptr, float *volume_ptr, int *isPlaying_ptr,
                          float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr,
-                         int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera); // Added Camera2D*
+                         int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera); 
+// A função GetPlayerBorderCondition_Internal agora é static em Game.c e não precisa ser declarada aqui
+// se apenas Game.c (para 2 jogadores) e Singleplayer.c (com sua própria lógica) a usam internamente.
+// Se Singleplayer.c precisasse chamar EXATAMENTE GetPlayerBorderCondition_Internal de Game.c, então ela precisaria ser não-static e declarada aqui.
+// Por ora, Singleplayer.c tem sua própria lógica de detecção de borda.
 
 #endif // GAME_H
