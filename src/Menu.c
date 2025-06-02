@@ -104,7 +104,7 @@ void UpdateIntroScreen(GameState *currentScreen_ptr, int *introFrames_ptr) {
 void DrawIntroScreen(void) { 
     ClearBackground(BLACK);
     DrawText("TELA DE INTRODUCAO", (int)(((float)virtualScreenWidth - (float)MeasureText("TELA DE INTRODUCAO", 30)) / 2.0f), (int)((float)virtualScreenHeight/2.0f - 40.0f), 30, WHITE);
-    DrawText("Fall Witches Engine v0.0.7", (int)(((float)virtualScreenWidth - (float)MeasureText("Fall Witches Engine v0.0.7", 20)) / 2.0f), (int)((float)virtualScreenHeight/2.0f + 10.0f), 20, LIGHTGRAY);
+    DrawText("Fall Witches Engine v0.0.9", (int)(((float)virtualScreenWidth - (float)MeasureText("Fall Witches Engine v0.0.9", 20)) / 2.0f), (int)((float)virtualScreenHeight/2.0f + 10.0f), 20, LIGHTGRAY);
     DrawText("Pressione ENTER, ESC ou clique para continuar...", (int)(((float)virtualScreenWidth - (float)MeasureText("Pressione ENTER, ESC ou clique para continuar...", 10)) / 2.0f), virtualScreenHeight - 30, 10, GRAY);
 }
 
