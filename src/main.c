@@ -5,12 +5,11 @@
 #include "../include/Classes.h"
 #include "../include/Menu.h"
 #include "../include/Inventory.h" 
-// #include "../include/SaveLoad.h" // Removido - não usado diretamente por main.c
 #include "../include/CharacterCreation.h"
 #include "../include/PauseMenu.h" 
 #include "../include/LoadSaveUI.h" 
-// #include "../include/Singleplayer.h" // Removido - Game.c o inclui
-#include <math.h>
+#include "../include/Settings.h"
+#include <math.h> 
 
 const int virtualScreenWidth = 800;
 const int virtualScreenHeight = 450;
@@ -22,13 +21,15 @@ GameModeType currentGameMode = GAME_MODE_UNINITIALIZED;
 int currentActivePlayers = MAX_PLAYERS_SUPPORTED; 
 
 int introScreenFramesCounter = 0;
-int currentPlaylistIndex = 0; // << DEFINIÇÃO CORRETA
+int currentPlaylistIndex = 0; // << Global para índice da playlist
 int musicIsPlaying = 1;
-float musicVolume = 0.5f;
+float musicVolume = 0.5f; 
+float sfxVolume = 0.5f;   
 float musicPlayTimer = 0.0f;
 float currentTrackDuration = 0.0f;
 int g_currentMapX = 0;
 int g_currentMapY = 0;
+// Estas constantes são usadas por Game.c (declaradas lá como extern)
 const int WORLD_MAP_MIN_X = -10; 
 const int WORLD_MAP_MAX_X = 10;  
 const int WORLD_MAP_MIN_Y = -10; 
@@ -57,10 +58,10 @@ Vector2 GetVirtualMousePosition(Vector2 actualMousePos) {
 
 int main(void) {
     SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
-    InitWindow(virtualScreenWidth, virtualScreenHeight, "Fall Witches - 0.0.9");
+    InitWindow(virtualScreenWidth, virtualScreenHeight, "Fall Witches - 0.0.10");
     SetExitKey(KEY_NULL); 
     InitAudioDevice();
-    InitGameResources(players, gamePlaylist); // players e gamePlaylist SÃO usados aqui
+    InitGameResources(players, gamePlaylist);
     targetRenderTexture = LoadRenderTexture(virtualScreenWidth, virtualScreenHeight);
     SetTextureFilter(targetRenderTexture.texture, TEXTURE_FILTER_BILINEAR);
 
@@ -93,6 +94,7 @@ int main(void) {
         }
 
         switch (currentScreen) {
+            // Usando currentPlaylistIndex consistentemente
             case GAMESTATE_MENU: UpdateMenuScreen(&currentScreen, virtualMousePosition); break;
             case GAMESTATE_INTRO: UpdateIntroScreen(&currentScreen, &introScreenFramesCounter); break;
             case GAMESTATE_PLAYER_MODE_MENU: UpdatePlayerModeMenuScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, musicVolume, &musicIsPlaying, virtualMousePosition); break;
@@ -101,7 +103,12 @@ int main(void) {
             case GAMESTATE_PAUSE: UpdatePauseScreen(&currentScreen, players, gamePlaylist, currentPlaylistIndex, musicIsPlaying, &musicIsPlaying, virtualMousePosition); break;
             case GAMESTATE_INVENTORY: UpdateInventoryScreen(&currentScreen, players, &musicIsPlaying, gamePlaylist, &currentPlaylistIndex); break;
             case GAMESTATE_SAVE_LOAD_MENU: UpdateSaveLoadMenuScreen(&currentScreen, players, gamePlaylist, currentPlaylistIndex, musicVolume, &musicIsPlaying, &g_currentMapX, &g_currentMapY, virtualMousePosition); break;
+            case GAMESTATE_SETTINGS: UpdateSettingsScreen(&currentScreen); break; 
             default: break;
+        }
+
+        if (musicIsPlaying && currentPlaylistIndex >= 0 && currentPlaylistIndex < MAX_MUSIC_PLAYLIST_SIZE && gamePlaylist[currentPlaylistIndex].stream.buffer != NULL) {
+             SetMusicVolume(gamePlaylist[currentPlaylistIndex], musicVolume);
         }
 
         BeginTextureMode(targetRenderTexture);
@@ -114,6 +121,8 @@ int main(void) {
                 DrawInventoryUIElements(players); 
             } else if (currentScreen == GAMESTATE_PLAYING) {
                 BeginMode2D(gameCamera); DrawPlayingScreen(players, currentActivePlayers, musicVolume, currentPlaylistIndex, musicIsPlaying, g_currentMapX, g_currentMapY); EndMode2D();
+            } else if (currentScreen == GAMESTATE_SETTINGS) {
+                DrawSettingsScreen();
             } else {
                 switch (currentScreen) {
                     case GAMESTATE_MENU: DrawMenuScreen(); break;

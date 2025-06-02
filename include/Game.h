@@ -10,9 +10,15 @@
 
 // --- Estados do Jogo (Cenas) ---
 typedef enum {
-    GAMESTATE_MENU, GAMESTATE_INTRO, GAMESTATE_PLAYER_MODE_MENU,
-    GAMESTATE_CHARACTER_CREATION, GAMESTATE_PLAYING, GAMESTATE_PAUSE,
-    GAMESTATE_INVENTORY, GAMESTATE_SAVE_LOAD_MENU
+    GAMESTATE_MENU, 
+    GAMESTATE_INTRO, 
+    GAMESTATE_PLAYER_MODE_MENU,
+    GAMESTATE_CHARACTER_CREATION, 
+    GAMESTATE_PLAYING, 
+    GAMESTATE_PAUSE,
+    GAMESTATE_INVENTORY, 
+    GAMESTATE_SAVE_LOAD_MENU,
+    GAMESTATE_SETTINGS // << NOVO ESTADO
 } GameState;
 
 // Tipos de Modo de Jogo
@@ -22,20 +28,13 @@ typedef enum {
     GAME_MODE_TWO_PLAYER
 } GameModeType;
 
-// NOVO: Enum para detecção de borda, movido para cá para ser global
-typedef enum { 
-    BORDER_NONE = 0, 
-    BORDER_LEFT, 
-    BORDER_RIGHT, 
-    BORDER_TOP, 
-    BORDER_BOTTOM 
-} BorderDirection;
+typedef enum { BORDER_NONE = 0, BORDER_LEFT, BORDER_RIGHT, BORDER_TOP, BORDER_BOTTOM } BorderDirection;
 
 // Variáveis globais (definidas em main.c)
 extern GameModeType currentGameMode;
 extern int currentActivePlayers; 
 
-// --- Protótipos das Funções de Lógica do Jogo (implementadas em Game.c) ---
+// --- Protótipos das Funções de Lógica do Jogo ---
 void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, int keyDown, int keyShift);
 void InitGameResources(Player players_arr[], Music mainPlaylist_arr[]);
 void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY, int numActivePlayers); 
@@ -44,9 +43,5 @@ void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int
                          int *currentMusicIndex_ptr, float *volume_ptr, int *isPlaying_ptr,
                          float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr,
                          int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera); 
-// A função GetPlayerBorderCondition_Internal agora é static em Game.c e não precisa ser declarada aqui
-// se apenas Game.c (para 2 jogadores) e Singleplayer.c (com sua própria lógica) a usam internamente.
-// Se Singleplayer.c precisasse chamar EXATAMENTE GetPlayerBorderCondition_Internal de Game.c, então ela precisaria ser não-static e declarada aqui.
-// Por ora, Singleplayer.c tem sua própria lógica de detecção de borda.
 
 #endif // GAME_H

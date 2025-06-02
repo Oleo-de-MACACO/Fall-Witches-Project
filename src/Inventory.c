@@ -1,44 +1,46 @@
 #include "../include/Inventory.h"
-#include "../include/Game.h"    
-#include "../include/Classes.h"  
-#include <string.h>             
-#include <stdio.h>              
-#include <raylib.h>             
-#include <stddef.h> // Para NULL
+#include "../include/Game.h"    // Para virtualScreenWidth/Height, Music, DrawPlayingScreen, MAX_PLAYERS_SUPPORTED, MAX_MUSIC_PLAYLIST_SIZE
+#include "../include/Classes.h"  // Para Player, Classe, InventoryItem, etc.
+#include <string.h>             // Para strlen, strcmp, strncpy
+#include <stdio.h>              // Para sprintf
+#include <raylib.h>             // Para funções de desenho e tipos da Raylib
+#include <stddef.h>             // Para NULL
 
-// Extern global variables
+// --- Variáveis Globais Externas ---
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
 extern int currentActivePlayers; // Usado por DrawInventoryScreen e DrawInventoryUIElements
 
-// Variáveis estáticas do módulo
-static bool first_inventory_update_call = true;
-static int music_was_playing_on_inventory_entry = 0;
+// --- Variáveis Estáticas da Tela de Inventário ---
+static bool first_inventory_update_call = true; // Usada em UpdateInventoryScreen
+static int music_was_playing_on_inventory_entry = 0; // Usada em UpdateInventoryScreen
 
 const char *tab_display_names[MAX_INVENTORY_TABS] = {"Inventario", "Equipamento", "Status"};
 
+// --- Funções de Gerenciamento do Inventário ---
 bool AddItemToInventory(Player *player, const char *itemName, int quantity) {
     if (!player || !itemName || strlen(itemName) == 0 || quantity <= 0) return false;
+    // Procura por item existente para empilhar
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
         if (strcmp(player->inventory[i].name, itemName) == 0) {
             player->inventory[i].quantity += quantity; 
+            // TraceLog(LOG_INFO, "Adicionado %d a '%s', total: %d", quantity, itemName, player->inventory[i].quantity);
             return true;
         }
     }
+    // Procura por slot vazio para novo item
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
-        if (strlen(player->inventory[i].name) == 0) {
+        if (strlen(player->inventory[i].name) == 0) { // Slot vazio
             strncpy(player->inventory[i].name, itemName, MAX_ITEM_NAME_LENGTH - 1);
-            player->inventory[i].name[MAX_ITEM_NAME_LENGTH - 1] = '\0';
+            player->inventory[i].name[MAX_ITEM_NAME_LENGTH - 1] = '\0'; // Garante terminação nula
             player->inventory[i].quantity = quantity;
-            // Atualiza a contagem de itens ocupados
-            int occupied_slots = 0;
-            for(int j=0; j < MAX_INVENTORY_SLOTS; j++){ if(strlen(player->inventory[j].name) > 0) occupied_slots++; }
-            player->inventory_item_count = occupied_slots; 
+            player->inventory_item_count++; // Incrementa contagem de tipos de itens
+            // TraceLog(LOG_INFO, "Adicionado novo item '%s' (x%d) no slot %d", itemName, quantity, i);
             return true;
         }
     }
     TraceLog(LOG_WARNING, "Nao foi possivel adicionar o item '%s': inventario cheio.", itemName);
-    return false;
+    return false; // Inventário cheio
 }
 
 bool RemoveItemFromInventory(Player *player, const char *itemName, int quantity) {
@@ -47,35 +49,37 @@ bool RemoveItemFromInventory(Player *player, const char *itemName, int quantity)
         if (strcmp(player->inventory[i].name, itemName) == 0) {
             if (player->inventory[i].quantity >= quantity) {
                 player->inventory[i].quantity -= quantity;
+                // TraceLog(LOG_INFO, "Removido %d de '%s', restante: %d", quantity, itemName, player->inventory[i].quantity);
                 if (player->inventory[i].quantity == 0) {
                     strcpy(player->inventory[i].name, ""); // Limpa o nome do item
-                    // Atualiza a contagem de itens ocupados
-                    int occupied_slots = 0;
-                    for(int j=0; j < MAX_INVENTORY_SLOTS; j++){ if(strlen(player->inventory[j].name) > 0) occupied_slots++; }
-                    player->inventory_item_count = occupied_slots;
-                } 
+                    player->inventory_item_count--; // Decrementa contagem de tipos de itens
+                    // TraceLog(LOG_INFO, "Item '%s' removido completamente do slot %d", itemName, i);
+                }
                 return true;
             } else {
-                TraceLog(LOG_WARNING, "Nao foi possivel remover %d de '%s': quantidade insuficiente.", quantity, itemName);
+                // TraceLog(LOG_WARNING, "Nao foi possivel remover %d de '%s': quantidade insuficiente (%d).", quantity, itemName, player->inventory[i].quantity);
                 return false; 
             }
         }
     }
-    TraceLog(LOG_WARNING, "Nao foi possivel remover item '%s': item nao encontrado.", itemName);
+    // TraceLog(LOG_WARNING, "Nao foi possivel remover item '%s': item nao encontrado.", itemName);
     return false; 
 }
 
+// --- Lógica de Atualização da Tela de Inventário ---
 void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *musicIsPlaying_ptr, Music playlist[], int *currentMusicIndex_ptr) {
     if (!currentScreen_ptr || !players || !musicIsPlaying_ptr || !playlist || !currentMusicIndex_ptr) return;
 
     if (first_inventory_update_call) {
         music_was_playing_on_inventory_entry = *musicIsPlaying_ptr;
+        // Pausa a música apenas se ela estiver tocando e for válida
         if (music_was_playing_on_inventory_entry && 
-            *currentMusicIndex_ptr >= 0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE && // Checagem de limites
+            *currentMusicIndex_ptr >=0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE && 
             playlist[*currentMusicIndex_ptr].stream.buffer != NULL) {
             PauseMusicStream(playlist[*currentMusicIndex_ptr]);
             *musicIsPlaying_ptr = 0;
         }
+        // Inicializa abas para todos os jogadores suportados (UI pode mostrar apenas os ativos)
         for (int i = 0; i < MAX_PLAYERS_SUPPORTED; i++) { 
              if (players[i].current_inventory_tab < 0 || players[i].current_inventory_tab >= MAX_INVENTORY_TABS) {
                  players[i].current_inventory_tab = TAB_INVENTORY;
@@ -86,8 +90,9 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
 
     if (IsKeyPressed(KEY_E) || IsKeyPressed(KEY_ESCAPE)) {
         *currentScreen_ptr = GAMESTATE_PLAYING;
+        // Retoma a música apenas se estava tocando antes e é válida
         if (music_was_playing_on_inventory_entry && 
-            *currentMusicIndex_ptr >= 0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE && // Checagem de limites
+            *currentMusicIndex_ptr >=0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE &&
             playlist[*currentMusicIndex_ptr].stream.buffer != NULL) {
             ResumeMusicStream(playlist[*currentMusicIndex_ptr]);
             *musicIsPlaying_ptr = 1;
@@ -97,6 +102,7 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
         return;
     }
 
+    // Navegação de abas - assume que a UI pode ter painéis para MAX_PLAYERS_SUPPORTED
     if (MAX_PLAYERS_SUPPORTED > 0) { 
         if (IsKeyPressed(KEY_A)) { players[0].current_inventory_tab = (players[0].current_inventory_tab - 1 + MAX_INVENTORY_TABS) % MAX_INVENTORY_TABS; }
         if (IsKeyPressed(KEY_D)) { players[0].current_inventory_tab = (players[0].current_inventory_tab + 1) % MAX_INVENTORY_TABS; }
@@ -107,6 +113,7 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
     }
 }
 
+// --- Funções de Desenho da Tela de Inventário ---
 void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
     if (!player) return;
     char buffer[128]; 
@@ -142,38 +149,28 @@ void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
     DrawLineEx((Vector2){panel_bounds.x + 5.0f, (float)(tab_text_y + line_height + 4)}, (Vector2){panel_bounds.x + panel_bounds.width - 5.0f, (float)(tab_text_y + line_height + 4)}, 1.0f, Fade(LIGHTGRAY, 0.5f));
     current_y = tab_text_y + line_height + 12;
     int col1_x = (int)(panel_bounds.x + (float)text_padding_x);
-    int col2_x = (int)(panel_bounds.x + (float)text_padding_x + (panel_bounds.width / 2.0f) - ((float)text_padding_x / 2.0f)); 
+    int col2_x = (int)(panel_bounds.x + (float)text_padding_x + (panel_bounds.width / 2.0f) - ((float)text_padding_x / 2.0f)) ; 
     int initial_content_y = current_y;
 
     switch ((InventoryTabType)player->current_inventory_tab) {
         case TAB_INVENTORY: 
             for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
                 if (current_y + line_height > (int)(panel_bounds.y + panel_bounds.height - 5.0f)) break;
-                if (strlen(player->inventory[i].name) > 0) {
-                    sprintf(buffer, "- %s (%d)", player->inventory[i].name, player->inventory[i].quantity);
-                    DrawText(buffer, col1_x, current_y, line_height, WHITE);
+                if (strlen(player->inventory[i].name) > 0) { sprintf(buffer, "- %s (%d)", player->inventory[i].name, player->inventory[i].quantity); DrawText(buffer, col1_x, current_y, line_height, WHITE);
                 } else { DrawText("- Vazio -", col1_x, current_y, line_height, DARKGRAY); }
                 current_y += line_height + 3;
-            }
-            break;
+            } break;
         case TAB_EQUIPMENT: 
-            sprintf(buffer, "Arma: %s", strlen(player->equipped_items[EQUIP_SLOT_WEAPON].name) > 0 ? player->equipped_items[EQUIP_SLOT_WEAPON].name : "<Nenhuma>");
-            DrawText(buffer, col1_x, current_y, line_height, WHITE); current_y += line_height + 3;
-            sprintf(buffer, "Armadura: %s", strlen(player->equipped_items[EQUIP_SLOT_ARMOR].name) > 0 ? player->equipped_items[EQUIP_SLOT_ARMOR].name : "<Nenhuma>");
-            DrawText(buffer, col1_x, current_y, line_height, WHITE); current_y += line_height + 3;
-            sprintf(buffer, "Acessorio: %s", strlen(player->equipped_items[EQUIP_SLOT_ACCESSORY].name) > 0 ? player->equipped_items[EQUIP_SLOT_ACCESSORY].name : "<Nenhum>");
-            DrawText(buffer, col1_x, current_y, line_height, WHITE);
+            sprintf(buffer, "Arma: %s", strlen(player->equipped_items[EQUIP_SLOT_WEAPON].name) > 0 ? player->equipped_items[EQUIP_SLOT_WEAPON].name : "<Nenhuma>"); DrawText(buffer, col1_x, current_y, line_height, WHITE); current_y += line_height + 3;
+            sprintf(buffer, "Armadura: %s", strlen(player->equipped_items[EQUIP_SLOT_ARMOR].name) > 0 ? player->equipped_items[EQUIP_SLOT_ARMOR].name : "<Nenhuma>"); DrawText(buffer, col1_x, current_y, line_height, WHITE); current_y += line_height + 3;
+            sprintf(buffer, "Acessorio: %s", strlen(player->equipped_items[EQUIP_SLOT_ACCESSORY].name) > 0 ? player->equipped_items[EQUIP_SLOT_ACCESSORY].name : "<Nenhum>"); DrawText(buffer, col1_x, current_y, line_height, WHITE);
             break;
         case TAB_STATUS: { 
-                int stat_y_col1 = initial_content_y; int stat_y_col2 = initial_content_y;
-                char class_name_str[30] = "Desconhecida";
+                int stat_y_col1 = initial_content_y; int stat_y_col2 = initial_content_y; char class_name_str[30];
+                strcpy(class_name_str, "Desconhecida"); 
                 switch(player->classe) { 
-                    case GUERREIRO: strcpy(class_name_str, "Guerreiro"); break;
-                    case MAGO:    strcpy(class_name_str, "Mago");    break;
-                    case ARQUEIRO:  strcpy(class_name_str, "Arqueiro");  break;
-                    case BARBARO: strcpy(class_name_str, "Barbaro"); break; 
-                    case LADINO:  strcpy(class_name_str, "Ladino");  break;
-                    case CLERIGO: strcpy(class_name_str, "Clerigo"); break;
+                    case GUERREIRO: strcpy(class_name_str, "Guerreiro"); break; case MAGO: strcpy(class_name_str, "Mago"); break; case ARQUEIRO: strcpy(class_name_str, "Arqueiro"); break;
+                    case BARBARO: strcpy(class_name_str, "Barbaro"); break; case LADINO: strcpy(class_name_str, "Ladino"); break; case CLERIGO: strcpy(class_name_str, "Clerigo"); break;
                     default: strcpy(class_name_str, "Nao Definida"); break; 
                 }
             sprintf(buffer, "Nome: %s", player->nome); DrawText(buffer, col1_x, stat_y_col1, line_height, WHITE); stat_y_col1 += line_height + 1;
@@ -198,12 +195,12 @@ void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
 }
 
 void DrawInventoryScreen(Player players_arr[], Player background_players_arr[], float background_musicVolume, int background_currentMusicIndex, int background_musicIsPlaying, int background_mapX, int background_mapY) {
-    (void)players_arr; 
+    (void)players_arr; // O array principal de jogadores não é usado diretamente aqui, pois a UI usa o global.
     DrawPlayingScreen(background_players_arr, currentActivePlayers, background_musicVolume, background_currentMusicIndex, background_musicIsPlaying, background_mapX, background_mapY);
 }
 
 void DrawInventoryUIElements(Player players_arr[]) {
-    if (!players_arr) return; // Checagem de ponteiro nulo
+    if (!players_arr) return; 
     DrawRectangle(0, 0, virtualScreenWidth, virtualScreenHeight, Fade(BLACK, 0.90f));
     int top_instruction_area_height = 35; int bottom_instruction_area_height = 35;
     int panel_area_y_start = top_instruction_area_height;
