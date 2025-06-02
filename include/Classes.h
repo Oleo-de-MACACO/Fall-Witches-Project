@@ -26,9 +26,9 @@ typedef enum {
   GUERREIRO,    // Guerreiro
   MAGO,         // Mago
   ARQUEIRO,     // Arqueiro
-  BARBARO,      // Bárbaro (NOVO)
-  LADINO,       // Ladino (NOVO)
-  CLERIGO       // Clérigo (NOVO)
+  BARBARO,      // Bárbaro
+  LADINO,       // Ladino
+  CLERIGO       // Clérigo
 } Classe;
 
 // Estrutura principal do Jogador
@@ -44,18 +44,22 @@ typedef struct {
   int max_vida;                      // Vida máxima
   int mana;                          // Mana atual
   int max_mana;                      // Mana máxima
+  int stamina;                       // Stamina/Vigor atual (NOVO)
+  int max_stamina;                   // Stamina/Vigor máxima (NOVO)
   
-  int ataque;                        // Ataque base (pode ser influenciado por atributos)
-  int defesa;                        // Defesa base (pode ser influenciada por atributos)
+  int ataque;                        // Ataque físico base
+  int defesa;                        // Defesa física base
+  int magic_attack;                  // Ataque mágico base (NOVO)
+  int magic_defense;                 // Defesa mágica base (NOVO)
   
-  // Atributos S.P.E.C.I.A.L. (Força, Percepção, Resistência, Carisma, Inteligência, Agilidade, Sorte)
-  int forca;                         // Força: Afeta dano físico, capacidade de carga
-  int percepcao;                     // Percepção: Afeta precisão, chance de encontrar itens, iniciativa
-  int resistencia;                   // Resistência: Afeta HP, resistência a status negativos
-  int carisma;                       // Carisma: Afeta preços em lojas, persuasão, liderança
-  int inteligencia;                  // Inteligência: Afeta MP, eficácia de magias, pontos de EXP ganhos
-  int agilidade;                     // Agilidade: Afeta esquiva, ordem de turno, velocidade de ataque
-  int sorte;                         // Sorte: Afeta chances críticas, drops raros, eventos aleatórios
+  // Atributos S.P.E.C.I.A.L.
+  int forca;
+  int percepcao;
+  int resistencia;
+  int carisma;
+  int inteligencia;
+  int agilidade;
+  int sorte;
 
   int moedas;                        // Quantidade de moedas do jogador
 
@@ -72,8 +76,8 @@ typedef struct {
 } Player;
 
 // Protótipos de função
-void init_player(Player *p, const char *nome_jogador, Classe classe_jogador); // Inicializa um jogador
-void init_player_inventory(Player *p);                                       // Inicializa o inventário do jogador
-void init_player_equipment(Player *p);                                       // Inicializa os slots de equipamento
+void init_player(Player *p, const char *nome_jogador, Classe classe_jogador);
+void init_player_inventory(Player *p);
+void init_player_equipment(Player *p);
 
 #endif // CLASSES_H

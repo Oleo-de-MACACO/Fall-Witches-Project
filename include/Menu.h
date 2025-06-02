@@ -2,29 +2,20 @@
 #define MENU_H
 
 #include "raylib.h"
-#include "Game.h"       // Para GameState, Player, Music
-#include "Classes.h"    // Para Player (embora já incluído por Game.h)
-#include <stdbool.h>    // Para bool
+#include "Game.h"       // Para GameState, Player, Music. Game.h inclui Classes.h
+// #include "Classes.h" // Removido, pois Game.h já o inclui.
+#include <stdbool.h>
 
-// Flag global de saída (declarada em main.c)
 extern bool g_request_exit;
 
-// Ações que os botões do menu podem executar
 typedef enum {
-    BUTTON_ACTION_NONE,
-    BUTTON_ACTION_GOTO_PLAYER_MODE_MENU,
-    BUTTON_ACTION_NEW_GAME_SETUP_SLOT,
-    BUTTON_ACTION_SETTINGS,
-    BUTTON_ACTION_QUIT_GAME,
-    BUTTON_ACTION_RESUME_GAME,
-    BUTTON_ACTION_SAVE_GAME,
-    BUTTON_ACTION_LOAD_GAME,
-    BUTTON_ACTION_PAUSE_SETTINGS,
-    BUTTON_ACTION_GOTO_MAIN_MENU,
-    BUTTON_ACTION_CONFIRM_CHARACTER_CREATION
+    BUTTON_ACTION_NONE, BUTTON_ACTION_GOTO_PLAYER_MODE_MENU, BUTTON_ACTION_NEW_GAME_SETUP_SLOT,
+    BUTTON_ACTION_SETTINGS, BUTTON_ACTION_QUIT_GAME, BUTTON_ACTION_RESUME_GAME,
+    BUTTON_ACTION_SAVE_GAME, BUTTON_ACTION_LOAD_GAME, BUTTON_ACTION_PAUSE_SETTINGS,
+    BUTTON_ACTION_GOTO_MAIN_MENU
 } MenuButtonAction;
 
-// Estrutura para um botão de menu
+// Estrutura MenuButton CORRIGIDA para a ordem original dos membros
 typedef struct {
     Rectangle rect;         // Posição e dimensões do botão
     const char *text;       // Texto exibido no botão
@@ -37,35 +28,28 @@ typedef struct {
     MenuButtonAction action; // Ação a ser executada pelo botão
 } MenuButton;
 
-// --- Protótipos para as Funções de Tela ---
-
-// Menu Principal
-// MODIFICADO: Adicionado parâmetro Vector2 virtualMousePos para interações com o mouse virtual.
+// --- Funções de Tela (Menu Principal, Intro, Modo de Jogador) ---
 void UpdateMenuScreen(GameState *currentScreen_ptr, Vector2 virtualMousePos);
-void DrawMenuScreen(void); // Desenha na tela virtual
-
-// Introdução
+void DrawMenuScreen(void);
 void UpdateIntroScreen(GameState *currentScreen_ptr, int *introFrames_ptr);
-void DrawIntroScreen(void); // Desenha na tela virtual
-
-// Menu de Modo de Jogador (seleciona Novo Jogo ou Carregar)
-// MODIFICADO: Adicionado parâmetro Vector2 virtualMousePos.
+void DrawIntroScreen(void);
 void UpdatePlayerModeMenuScreen(GameState *currentScreen_ptr, Music playlist[], int currentMusicIndex, float currentVolume, int *isPlaying_ptr, Vector2 virtualMousePos);
-void DrawPlayerModeMenuScreen(void); // Desenha na tela virtual
+void DrawPlayerModeMenuScreen(void);
 
-// Tela de Criação de Personagem
-void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[], int *mapX, int *mapY, Music playlist[], int currentMusicIndex, float currentVolume, int *musicIsPlaying_ptr);
-void DrawCharacterCreationScreen(Player players[], int currentPlayerFocus); // Desenha na tela virtual
+// --- Funções de Gerenciamento de Contexto para Save/Load (usadas por LoadSaveUI.c) ---
+void Menu_RequestSaveLoadScreen(GameState *currentScreen_ptr, bool isSaving, GameState fromScreen);
+void Menu_RequestMainMenu(GameState *currentScreen_ptr, Music playlist[], int currentMusicIndex, int *musicIsCurrentlyPlaying_ptr);
 
-// Menu de Pausa
-// MODIFICADO: Adicionado parâmetro Vector2 virtualMousePos.
-void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music playlist[], int currentMusicIndex, int isPlaying_beforePause, int *musicIsCurrentlyPlaying_ptr, Vector2 virtualMousePos);
-void DrawPauseScreen(Player players_arr[], float currentVolume, int currentMusicIndex, int isPlaying_when_game_paused, int currentMapX, int currentMapY); // Desenha na tela virtual
+// Getters para o contexto do Save/Load
+bool Menu_IsInSaveMode(void);
+bool Menu_IsNewGameFlow(void);
+int Menu_GetSaveLoadSubState(void);
+int Menu_GetSelectedSlotForAction(void);
+GameState Menu_GetPreviousScreenBeforeSaveLoad(void);
 
-// Tela de Save/Load Slots
-// MODIFICADO: Adicionado parâmetro Vector2 virtualMousePos.
-void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Music playlist[], int currentMusicIndex, float currentVolume, int *musicIsCurrentlyPlaying_ptr, int *currentMapX_ptr, int *currentMapY_ptr, Vector2 virtualMousePos);
-void DrawSaveLoadMenuScreen(Player players[], Music playlist[], int currentMusicIndex, int musicIsPlaying, float musicVolume, int mapX, int mapY); // Desenha na tela virtual
-
+// Setters para o contexto do Save/Load
+void Menu_SetSaveLoadSubState(int subState);
+void Menu_SetSelectedSlotForAction(int slot);
+void Menu_SetIsNewGameFlow(bool isNewGameFlow);
 
 #endif // MENU_H
