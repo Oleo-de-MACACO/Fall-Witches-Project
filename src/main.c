@@ -62,7 +62,7 @@ Vector2 GetVirtualMousePosition(Vector2 actualMousePos) {
 
 int main(void) {
     SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
-    InitWindow(virtualScreenWidth, virtualScreenHeight, "Fall Witches");
+    InitWindow(virtualScreenWidth, virtualScreenHeight, "Fall Witches - 0.0.11");
     if (!IsWindowReady()) {
         // Idealmente, logar ou tratar erro se a janela não puder ser criada
         return 1;
