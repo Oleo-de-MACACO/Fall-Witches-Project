@@ -3,80 +3,66 @@
 
 #include "raylib.h"
 
-#define MAX_PLAYER_NAME_LENGTH 50  // Tamanho máximo para o nome do jogador
-#define MAX_INVENTORY_SLOTS 10     // Máximo de slots no inventário
-#define MAX_ITEM_NAME_LENGTH 50    // Tamanho máximo para nome de item
+#define MAX_PLAYER_NAME_LENGTH 50
+#define MAX_INVENTORY_SLOTS 10
+#define MAX_ITEM_NAME_LENGTH 50
 
-// Enum para os slots de equipamento
 typedef enum {
-    EQUIP_SLOT_WEAPON = 0,    // Slot da Arma
-    EQUIP_SLOT_ARMOR,         // Slot da Armadura
-    EQUIP_SLOT_ACCESSORY,     // Slot do Acessório
-    MAX_EQUIP_SLOTS           // Número de slots de equipamento
-} EquipmentSlotType;
+    SPRITE_TYPE_HUMANO,
+    SPRITE_TYPE_DEMONIO,
+    NUM_SPRITE_TYPES
+} SpriteType;
 
-// Estrutura para um item no inventário (reutilizada para equipamento)
-typedef struct {
-    char name[MAX_ITEM_NAME_LENGTH]; // Nome do item
-    int quantity;                    // Quantidade do item
-} InventoryItem;
-
-// Enum para as classes dos jogadores
 typedef enum {
-  GUERREIRO,    // Guerreiro
-  MAGO,         // Mago
-  ARQUEIRO,     // Arqueiro
-  BARBARO,      // Bárbaro
-  LADINO,       // Ladino
-  CLERIGO       // Clérigo
-} Classe;
+    DIR_DOWN = 0, 
+    DIR_LEFT,
+    DIR_RIGHT,
+    DIR_UP
+} CharacterDirection;
 
-// Estrutura principal do Jogador
+#define NUM_WALK_UP_FRAMES 3
+#define NUM_WALK_DOWN_FRAMES 3
+#define NUM_WALK_LEFT_FRAMES 2
+#define NUM_WALK_RIGHT_FRAMES 2
+
+typedef enum { EQUIP_SLOT_WEAPON = 0, EQUIP_SLOT_ARMOR, EQUIP_SLOT_ACCESSORY, MAX_EQUIP_SLOTS } EquipmentSlotType;
+typedef struct { char name[MAX_ITEM_NAME_LENGTH]; int quantity; } InventoryItem;
+typedef enum { GUERREIRO, MAGO, ARQUEIRO, BARBARO, LADINO, CLERIGO, CLASSE_COUNT } Classe; // Added CLASSE_COUNT
+
 typedef struct {
-  char nome[MAX_PLAYER_NAME_LENGTH]; // Nome do jogador
-  Texture2D txr;                     // Textura do jogador (não salva diretamente no arquivo de save)
-  Classe classe;                     // Classe do jogador
+  char nome[MAX_PLAYER_NAME_LENGTH]; 
+  Classe classe;  
+  SpriteType spriteType; 
 
-  int nivel;                         // Nível atual
-  int exp;                           // Pontos de experiência atuais
-  
-  int vida;                          // Vida atual
-  int max_vida;                      // Vida máxima
-  int mana;                          // Mana atual
-  int max_mana;                      // Mana máxima
-  int stamina;                       // Stamina/Vigor atual (NOVO)
-  int max_stamina;                   // Stamina/Vigor máxima (NOVO)
-  
-  int ataque;                        // Ataque físico base
-  int defesa;                        // Defesa física base
-  int magic_attack;                  // Ataque mágico base (NOVO)
-  int magic_defense;                 // Defesa mágica base (NOVO)
-  
-  // Atributos S.P.E.C.I.A.L.
-  int forca;
-  int percepcao;
-  int resistencia;
-  int carisma;
-  int inteligencia;
-  int agilidade;
-  int sorte;
+  int nivel; int exp;                           
+  int vida; int max_vida;                      
+  int mana; int max_mana;                      
+  int stamina; int max_stamina;                  
+  int ataque; int defesa;                        
+  int magic_attack; int magic_defense;                 
+  int forca; int percepcao; int resistencia;
+  int carisma; int inteligencia; int agilidade; int sorte;
+  int moedas;                        
+  int posx; int posy;                          
+  int width; int height;                        
+  InventoryItem inventory[MAX_INVENTORY_SLOTS]; 
+  int inventory_item_count;                     
+  InventoryItem equipped_items[MAX_EQUIP_SLOTS]; 
+  int current_inventory_tab;         
 
-  int moedas;                        // Quantidade de moedas do jogador
-
-  int posx;                          // Posição X na tela
-  int posy;                          // Posição Y na tela
-  int width;                         // Largura (para colisão/desenho)
-  int height;                        // Altura (para colisão/desenho)
+  Texture2D walkUpFrames[NUM_WALK_UP_FRAMES];
+  Texture2D walkDownFrames[NUM_WALK_DOWN_FRAMES];
+  Texture2D walkLeftFrames[NUM_WALK_LEFT_FRAMES];
+  Texture2D walkRightFrames[NUM_WALK_RIGHT_FRAMES];
   
-  InventoryItem inventory[MAX_INVENTORY_SLOTS]; // Inventário de itens
-  int inventory_item_count;                     // Contagem de tipos de itens no inventário
-  InventoryItem equipped_items[MAX_EQUIP_SLOTS]; // Itens equipados
-  
-  int current_inventory_tab;         // Aba atual no inventário/painel do jogador
+  int currentAnimFrame;        
+  float frameTimer;            
+  float frameDuration;         
+  CharacterDirection facingDir; 
+  bool isMoving;                
 } Player;
 
-// Protótipos de função
-void init_player(Player *p, const char *nome_jogador, Classe classe_jogador);
+void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, SpriteType sprite_type);
 void init_player_inventory(Player *p);
 void init_player_equipment(Player *p);
 

@@ -1,46 +1,43 @@
 #include "../include/Inventory.h"
-#include "../include/Game.h"    // Para virtualScreenWidth/Height, Music, DrawPlayingScreen, MAX_PLAYERS_SUPPORTED, MAX_MUSIC_PLAYLIST_SIZE
-#include "../include/Classes.h"  // Para Player, Classe, InventoryItem, etc.
-#include <string.h>             // Para strlen, strcmp, strncpy
-#include <stdio.h>              // Para sprintf
-#include <raylib.h>             // Para funções de desenho e tipos da Raylib
-#include <stddef.h>             // Para NULL
+#include "../include/Game.h"    
+#include "../include/Classes.h"  
+#include <string.h>             
+#include <stdio.h>              
+#include <raylib.h>             
+#include <stddef.h> // Para NULL
 
-// --- Variáveis Globais Externas ---
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
-extern int currentActivePlayers; // Usado por DrawInventoryScreen e DrawInventoryUIElements
+extern int currentActivePlayers; 
+extern GameModeType currentGameMode; // Para saber se é single ou two player na UI
 
-// --- Variáveis Estáticas da Tela de Inventário ---
-static bool first_inventory_update_call = true; // Usada em UpdateInventoryScreen
-static int music_was_playing_on_inventory_entry = 0; // Usada em UpdateInventoryScreen
+// Variáveis estáticas usadas por UpdateInventoryScreen
+static bool first_inventory_update_call = true;
+static int music_was_playing_on_inventory_entry = 0;
 
 const char *tab_display_names[MAX_INVENTORY_TABS] = {"Inventario", "Equipamento", "Status"};
 
-// --- Funções de Gerenciamento do Inventário ---
 bool AddItemToInventory(Player *player, const char *itemName, int quantity) {
     if (!player || !itemName || strlen(itemName) == 0 || quantity <= 0) return false;
-    // Procura por item existente para empilhar
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
         if (strcmp(player->inventory[i].name, itemName) == 0) {
             player->inventory[i].quantity += quantity; 
-            // TraceLog(LOG_INFO, "Adicionado %d a '%s', total: %d", quantity, itemName, player->inventory[i].quantity);
             return true;
         }
     }
-    // Procura por slot vazio para novo item
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
-        if (strlen(player->inventory[i].name) == 0) { // Slot vazio
+        if (strlen(player->inventory[i].name) == 0) {
             strncpy(player->inventory[i].name, itemName, MAX_ITEM_NAME_LENGTH - 1);
-            player->inventory[i].name[MAX_ITEM_NAME_LENGTH - 1] = '\0'; // Garante terminação nula
+            player->inventory[i].name[MAX_ITEM_NAME_LENGTH - 1] = '\0';
             player->inventory[i].quantity = quantity;
-            player->inventory_item_count++; // Incrementa contagem de tipos de itens
-            // TraceLog(LOG_INFO, "Adicionado novo item '%s' (x%d) no slot %d", itemName, quantity, i);
+            int occupied_slots = 0;
+            for(int j=0; j < MAX_INVENTORY_SLOTS; j++){ if(strlen(player->inventory[j].name) > 0) occupied_slots++; }
+            player->inventory_item_count = occupied_slots; 
             return true;
         }
     }
     TraceLog(LOG_WARNING, "Nao foi possivel adicionar o item '%s': inventario cheio.", itemName);
-    return false; // Inventário cheio
+    return false; 
 }
 
 bool RemoveItemFromInventory(Player *player, const char *itemName, int quantity) {
@@ -49,37 +46,34 @@ bool RemoveItemFromInventory(Player *player, const char *itemName, int quantity)
         if (strcmp(player->inventory[i].name, itemName) == 0) {
             if (player->inventory[i].quantity >= quantity) {
                 player->inventory[i].quantity -= quantity;
-                // TraceLog(LOG_INFO, "Removido %d de '%s', restante: %d", quantity, itemName, player->inventory[i].quantity);
                 if (player->inventory[i].quantity == 0) {
-                    strcpy(player->inventory[i].name, ""); // Limpa o nome do item
-                    player->inventory_item_count--; // Decrementa contagem de tipos de itens
-                    // TraceLog(LOG_INFO, "Item '%s' removido completamente do slot %d", itemName, i);
-                }
+                    strcpy(player->inventory[i].name, ""); 
+                    int occupied_slots = 0;
+                    for(int j=0; j < MAX_INVENTORY_SLOTS; j++){ if(strlen(player->inventory[j].name) > 0) occupied_slots++; }
+                    player->inventory_item_count = occupied_slots;
+                } 
                 return true;
             } else {
-                // TraceLog(LOG_WARNING, "Nao foi possivel remover %d de '%s': quantidade insuficiente (%d).", quantity, itemName, player->inventory[i].quantity);
+                TraceLog(LOG_WARNING, "Nao foi possivel remover %d de '%s': quantidade insuficiente (%d).", quantity, itemName, player->inventory[i].quantity);
                 return false; 
             }
         }
     }
-    // TraceLog(LOG_WARNING, "Nao foi possivel remover item '%s': item nao encontrado.", itemName);
+    TraceLog(LOG_WARNING, "Nao foi possivel remover item '%s': item nao encontrado.", itemName);
     return false; 
 }
 
-// --- Lógica de Atualização da Tela de Inventário ---
 void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *musicIsPlaying_ptr, Music playlist[], int *currentMusicIndex_ptr) {
     if (!currentScreen_ptr || !players || !musicIsPlaying_ptr || !playlist || !currentMusicIndex_ptr) return;
 
     if (first_inventory_update_call) {
         music_was_playing_on_inventory_entry = *musicIsPlaying_ptr;
-        // Pausa a música apenas se ela estiver tocando e for válida
         if (music_was_playing_on_inventory_entry && 
             *currentMusicIndex_ptr >=0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE && 
             playlist[*currentMusicIndex_ptr].stream.buffer != NULL) {
             PauseMusicStream(playlist[*currentMusicIndex_ptr]);
             *musicIsPlaying_ptr = 0;
         }
-        // Inicializa abas para todos os jogadores suportados (UI pode mostrar apenas os ativos)
         for (int i = 0; i < MAX_PLAYERS_SUPPORTED; i++) { 
              if (players[i].current_inventory_tab < 0 || players[i].current_inventory_tab >= MAX_INVENTORY_TABS) {
                  players[i].current_inventory_tab = TAB_INVENTORY;
@@ -90,7 +84,6 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
 
     if (IsKeyPressed(KEY_E) || IsKeyPressed(KEY_ESCAPE)) {
         *currentScreen_ptr = GAMESTATE_PLAYING;
-        // Retoma a música apenas se estava tocando antes e é válida
         if (music_was_playing_on_inventory_entry && 
             *currentMusicIndex_ptr >=0 && *currentMusicIndex_ptr < MAX_MUSIC_PLAYLIST_SIZE &&
             playlist[*currentMusicIndex_ptr].stream.buffer != NULL) {
@@ -102,7 +95,6 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
         return;
     }
 
-    // Navegação de abas - assume que a UI pode ter painéis para MAX_PLAYERS_SUPPORTED
     if (MAX_PLAYERS_SUPPORTED > 0) { 
         if (IsKeyPressed(KEY_A)) { players[0].current_inventory_tab = (players[0].current_inventory_tab - 1 + MAX_INVENTORY_TABS) % MAX_INVENTORY_TABS; }
         if (IsKeyPressed(KEY_D)) { players[0].current_inventory_tab = (players[0].current_inventory_tab + 1) % MAX_INVENTORY_TABS; }
@@ -113,7 +105,6 @@ void UpdateInventoryScreen(GameState *currentScreen_ptr, Player players[], int *
     }
 }
 
-// --- Funções de Desenho da Tela de Inventário ---
 void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
     if (!player) return;
     char buffer[128]; 
@@ -121,26 +112,18 @@ void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
     int text_padding_x = 10;
     int current_y = (int)(panel_bounds.y + 10.0f);
 
-    sprintf(buffer, "HP: %d / %d", player->vida, player->max_vida);
-    DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, (player->vida < player->max_vida * 0.3f) ? RED : LIME);
-    current_y += line_height + 1;
-    sprintf(buffer, "MP: %d / %d", player->mana, player->max_mana);
-    DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, SKYBLUE);
-    current_y += line_height + 1;
-    sprintf(buffer, "ST: %d / %d", player->stamina, player->max_stamina);
-    DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, YELLOW);
-    current_y += line_height + 1;
-    sprintf(buffer, "Moedas: %d", player->moedas);
-    DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, GOLD);
-    current_y += line_height + 8;
+    sprintf(buffer, "HP: %d / %d", player->vida, player->max_vida); DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, (player->vida < player->max_vida * 0.3f) ? RED : LIME); current_y += line_height + 1;
+    sprintf(buffer, "MP: %d / %d", player->mana, player->max_mana); DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, SKYBLUE); current_y += line_height + 1;
+    sprintf(buffer, "ST: %d / %d", player->stamina, player->max_stamina); DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, YELLOW); current_y += line_height + 1;
+    sprintf(buffer, "Moedas: %d", player->moedas); DrawText(buffer, (int)(panel_bounds.x + (float)text_padding_x), current_y, line_height, GOLD); current_y += line_height + 8;
 
     int current_tab_x_pos = (int)(panel_bounds.x + (float)text_padding_x); 
     int tab_text_y = current_y;
     for (int i = 0; i < MAX_INVENTORY_TABS; i++) {
-        Color tab_color = (player->current_inventory_tab == i) ? YELLOW : GRAY;
+        Color tab_color = (player->current_inventory_tab == (InventoryTabType)i) ? YELLOW : GRAY; 
         int text_width = MeasureText(tab_display_names[i], line_height);
         DrawText(tab_display_names[i], current_tab_x_pos, tab_text_y, line_height, tab_color); 
-        if (player->current_inventory_tab == i) {
+        if (player->current_inventory_tab == (InventoryTabType)i) { 
             DrawRectangle((int)((float)current_tab_x_pos - 3.0f), (int)((float)tab_text_y - 3.0f), text_width + 6, line_height + 6, Fade(YELLOW, 0.15f));
             DrawLineEx((Vector2){(float)current_tab_x_pos, (float)(tab_text_y + line_height + 2)}, (Vector2){(float)current_tab_x_pos + (float)text_width, (float)(tab_text_y + line_height + 2)}, 2.0f, YELLOW);
         }
@@ -194,9 +177,9 @@ void DrawPlayerPanelContent(Player *player, Rectangle panel_bounds) {
     }
 }
 
-void DrawInventoryScreen(Player players_arr[], Player background_players_arr[], float background_musicVolume, int background_currentMusicIndex, int background_musicIsPlaying, int background_mapX, int background_mapY) {
-    (void)players_arr; // O array principal de jogadores não é usado diretamente aqui, pois a UI usa o global.
-    DrawPlayingScreen(background_players_arr, currentActivePlayers, background_musicVolume, background_currentMusicIndex, background_musicIsPlaying, background_mapX, background_mapY);
+void DrawInventoryScreen(Player players_arr[], Player background_players_arr[], float bg_music_vol, int bg_music_idx, int bg_music_playing, int bg_mapX, int bg_mapY) {
+    (void)players_arr; 
+    DrawPlayingScreen(background_players_arr, currentActivePlayers, bg_music_vol, bg_music_idx, bg_music_playing, bg_mapX, bg_mapY);
 }
 
 void DrawInventoryUIElements(Player players_arr[]) {
@@ -208,9 +191,7 @@ void DrawInventoryUIElements(Player players_arr[]) {
     int panel_padding = 10;
     const char *main_title = "PAINEL DOS JOGADORES";
     DrawText(main_title, (int)(((float)virtualScreenWidth - (float)MeasureText(main_title, 20)) / 2.0f), 8, 20, RAYWHITE);
-
     int playersToDraw = currentActivePlayers; 
-
     if (playersToDraw > 0) {
         if (playersToDraw == 1) { 
             Rectangle panel_p1_bounds = {(float)panel_padding, (float)panel_area_y_start, (float)virtualScreenWidth - 2.0f * (float)panel_padding, (float)panel_area_height };
@@ -223,7 +204,6 @@ void DrawInventoryUIElements(Player players_arr[]) {
             DrawRectangleRoundedLinesEx(panel_p1_bounds, 0.05f, 12, 2.0f, Fade(LIGHTGRAY, 0.7f));
             DrawRectangleRec(panel_p1_bounds, Fade(DARKGRAY, 0.6f));
             DrawPlayerPanelContent(&players_arr[0], panel_p1_bounds);
-            
             if (MAX_PLAYERS_SUPPORTED > 1 && playersToDraw > 1) { 
                 Rectangle panel_p2_bounds = {(float)panel_padding * 2.0f + panel_width, (float)panel_area_y_start, panel_width, (float)panel_area_height };
                 DrawRectangleRoundedLinesEx(panel_p2_bounds, 0.05f, 12, 2.0f, Fade(LIGHTGRAY, 0.7f));
