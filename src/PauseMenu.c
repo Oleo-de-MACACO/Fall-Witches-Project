@@ -1,25 +1,21 @@
 #include "../include/PauseMenu.h"
-#include "../include/Menu.h"     // Para MenuButton, MenuButtonAction, e Menu_Request... funcs
-#include "../include/Game.h"     // Para DrawPlayingScreen, GameState, Player, Music, MAX_MUSIC_PLAYLIST_SIZE
-#include "../include/Settings.h" // << ADICIONADO para InitializeSettingsScreen
-#include <stddef.h>              // Para NULL
+#include "../include/Menu.h"
+#include "../include/Game.h"
+#include "../include/Settings.h"
+#include <stddef.h> // Para NULL
 
-// Extern global variables (defined in main.c)
+// ... (variáveis estáticas e InitializePauseMenuButtons como antes) ...
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
-extern GameModeType currentGameMode; 
-extern int currentActivePlayers;    
-
+extern GameModeType currentGameMode;
+extern int currentActivePlayers;
 #define NUM_PAUSE_MENU_BUTTONS 5
 static MenuButton pauseMenuButtons[NUM_PAUSE_MENU_BUTTONS];
 static bool pauseMenuButtonsInitialized = false;
-
-// Define colors locally or use a common header if shared across more UI files
-#define COLOR_BUTTON_ACTIVE MAROON    
+#define COLOR_BUTTON_ACTIVE MAROON
 #define COLOR_BUTTON_HOVER ORANGE
 #define COLOR_BUTTON_DISABLED GRAY
 #define COLOR_BUTTON_TEXT WHITE
-
 static void InitializePauseMenuButtons(void) {
     float btnContinueWidth = 300.0f; float btnContinueHeight = 60.0f;
     float btnWidth = 220.0f; float btnHeight = 45.0f;
@@ -27,46 +23,24 @@ static void InitializePauseMenuButtons(void) {
     float titlePauseFontSize = 50.0f;
     float titlePauseY = (float)virtualScreenHeight / 2.0f - 120.0f;
     float startY = titlePauseY + titlePauseFontSize + 20.0f;
-
-    // Ordem correta: rect, text, base_color, hover_color, disabled_color, text_color, is_active, is_hovered, action
-    pauseMenuButtons[0] = (MenuButton){
-        {(float)(virtualScreenWidth - btnContinueWidth) / 2.0f, startY, btnContinueWidth, btnContinueHeight}, 
-        "Continuar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, 
-        true, false, BUTTON_ACTION_RESUME_GAME
-    };
+    pauseMenuButtons[0] = (MenuButton){{(float)(virtualScreenWidth - btnContinueWidth) / 2.0f, startY, btnContinueWidth, btnContinueHeight}, "Continuar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, true, false, BUTTON_ACTION_RESUME_GAME };
     float currentY = startY + btnContinueHeight + spacingY;
     float twoButtonRowWidthPause = 2.0f * btnWidth + spacingX;
     float startX_twoButtonsPause = ((float)virtualScreenWidth - twoButtonRowWidthPause) / 2.0f;
-    pauseMenuButtons[1] = (MenuButton){
-        {startX_twoButtonsPause, currentY, btnWidth, btnHeight}, 
-        "Salvar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, 
-        true, false, BUTTON_ACTION_SAVE_GAME
-    };
-    pauseMenuButtons[2] = (MenuButton){
-        {startX_twoButtonsPause + btnWidth + spacingX, currentY, btnWidth, btnHeight}, 
-        "Carregar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, 
-        true, false, BUTTON_ACTION_LOAD_GAME
-    };
+    pauseMenuButtons[1] = (MenuButton){{startX_twoButtonsPause, currentY, btnWidth, btnHeight}, "Salvar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, true, false, BUTTON_ACTION_SAVE_GAME };
+    pauseMenuButtons[2] = (MenuButton){{startX_twoButtonsPause + btnWidth + spacingX, currentY, btnWidth, btnHeight}, "Carregar", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, true, false, BUTTON_ACTION_LOAD_GAME };
     currentY += btnHeight + spacingY;
-    pauseMenuButtons[3] = (MenuButton){ // Botão de Opções
-        {startX_twoButtonsPause, currentY, btnWidth, btnHeight}, 
-        "Opções", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, 
-        true, false, BUTTON_ACTION_PAUSE_SETTINGS // Ação para configurações da pausa
-    };
-    pauseMenuButtons[4] = (MenuButton){
-        {startX_twoButtonsPause + btnWidth + spacingX, currentY, btnWidth, btnHeight}, 
-        "Sair para Menu", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, 
-        true, false, BUTTON_ACTION_GOTO_MAIN_MENU
-    };
+    pauseMenuButtons[3] = (MenuButton){{startX_twoButtonsPause, currentY, btnWidth, btnHeight}, "Opções", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, true, false, BUTTON_ACTION_PAUSE_SETTINGS };
+    pauseMenuButtons[4] = (MenuButton){{startX_twoButtonsPause + btnWidth + spacingX, currentY, btnWidth, btnHeight}, "Sair para Menu", COLOR_BUTTON_ACTIVE, COLOR_BUTTON_HOVER, COLOR_BUTTON_DISABLED, COLOR_BUTTON_TEXT, true, false, BUTTON_ACTION_GOTO_MAIN_MENU };
     pauseMenuButtonsInitialized = true;
 }
 
-void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music playlist[], int currentMusicIndex, int isPlaying_beforePause, int *musicIsCurrentlyPlaying_ptr, Vector2 virtualMousePos) {
-    (void)players; // players array não é usado diretamente aqui por enquanto
-
-    if (!pauseMenuButtonsInitialized) {
-        InitializePauseMenuButtons();
-    }
+// Parâmetros isPlaying_beforePause e musicIsCurrentlyPlaying_ptr corrigidos para bool/bool*
+void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music playlist[],
+                       int currentMusicIndex, bool isPlaying_beforePause, bool *musicIsCurrentlyPlaying_ptr,
+                       Vector2 virtualMousePos) {
+    (void)players;
+    if (!pauseMenuButtonsInitialized) { InitializePauseMenuButtons(); }
 
     for (int i = 0; i < NUM_PAUSE_MENU_BUTTONS; i++) {
         pauseMenuButtons[i].is_hovered = false;
@@ -76,28 +50,20 @@ void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music pla
                 switch (pauseMenuButtons[i].action) {
                     case BUTTON_ACTION_RESUME_GAME:
                         if (currentScreen_ptr) *currentScreen_ptr = GAMESTATE_PLAYING;
-                        if (playlist && musicIsCurrentlyPlaying_ptr && isPlaying_beforePause && 
+                        if (playlist && musicIsCurrentlyPlaying_ptr && isPlaying_beforePause &&
                             currentMusicIndex >= 0 && currentMusicIndex < MAX_MUSIC_PLAYLIST_SIZE &&
                             playlist[currentMusicIndex].stream.buffer != NULL) {
                             ResumeMusicStream(playlist[currentMusicIndex]);
-                            *musicIsCurrentlyPlaying_ptr = 1;
+                            *musicIsCurrentlyPlaying_ptr = true;
                         }
                         break;
-                    case BUTTON_ACTION_SAVE_GAME:
-                        Menu_RequestSaveLoadScreen(currentScreen_ptr, true, GAMESTATE_PAUSE);
+                    case BUTTON_ACTION_SAVE_GAME: Menu_RequestSaveLoadScreen(currentScreen_ptr, true, GAMESTATE_PAUSE); break;
+                    case BUTTON_ACTION_LOAD_GAME: Menu_RequestSaveLoadScreen(currentScreen_ptr, false, GAMESTATE_PAUSE); break;
+                    case BUTTON_ACTION_PAUSE_SETTINGS:
+                        if (currentScreen_ptr) { InitializeSettingsScreen(GAMESTATE_PAUSE); *currentScreen_ptr = GAMESTATE_SETTINGS; }
                         break;
-                    case BUTTON_ACTION_LOAD_GAME:
-                        Menu_RequestSaveLoadScreen(currentScreen_ptr, false, GAMESTATE_PAUSE);
-                        break;
-                    case BUTTON_ACTION_PAUSE_SETTINGS: // << AÇÃO MODIFICADA AQUI
-                        if (currentScreen_ptr) {
-                            InitializeSettingsScreen(GAMESTATE_PAUSE); // Informa Settings de onde veio
-                            *currentScreen_ptr = GAMESTATE_SETTINGS;
-                            TraceLog(LOG_INFO, "[PauseMenu] -> Configurações");
-                        }
-                        break;
-                    case BUTTON_ACTION_GOTO_MAIN_MENU: 
-                        Menu_RequestMainMenu(currentScreen_ptr, playlist, currentMusicIndex, musicIsCurrentlyPlaying_ptr); 
+                    case BUTTON_ACTION_GOTO_MAIN_MENU:
+                        Menu_RequestMainMenu(currentScreen_ptr, playlist, currentMusicIndex, musicIsCurrentlyPlaying_ptr); // Passa bool*
                         break;
                     default: break;
                 }
@@ -106,19 +72,17 @@ void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music pla
     }
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_P)) {
         if (currentScreen_ptr) *currentScreen_ptr = GAMESTATE_PLAYING;
-        if (playlist && musicIsCurrentlyPlaying_ptr && isPlaying_beforePause && 
+        if (playlist && musicIsCurrentlyPlaying_ptr && isPlaying_beforePause &&
             currentMusicIndex >= 0 && currentMusicIndex < MAX_MUSIC_PLAYLIST_SIZE &&
             playlist[currentMusicIndex].stream.buffer != NULL) {
             ResumeMusicStream(playlist[currentMusicIndex]);
-            *musicIsCurrentlyPlaying_ptr = 1;
+            *musicIsCurrentlyPlaying_ptr = true;
         }
     }
  }
 
-void DrawPauseMenuElements(void) {
-    if (!pauseMenuButtonsInitialized) {
-        InitializePauseMenuButtons();
-    }
+void DrawPauseMenuElements(void) { /* ... (código como antes) ... */
+    if (!pauseMenuButtonsInitialized) { InitializePauseMenuButtons(); }
     DrawRectangle(0, 0, virtualScreenWidth, virtualScreenHeight, Fade(BLACK, 0.85f));
     DrawText("PAUSADO", (int)(((float)virtualScreenWidth - (float)MeasureText("PAUSADO", 50)) / 2.0f), (int)((float)virtualScreenHeight/2.0f - 120.0f), 50, GRAY);
     for (int i = 0; i < NUM_PAUSE_MENU_BUTTONS; i++) {
@@ -131,7 +95,8 @@ void DrawPauseMenuElements(void) {
     }
 }
 
-void DrawPauseScreen(Player players_arr[], float currentVolume, int currentMusicIndex, int isPlaying_when_game_paused, int currentMapX, int currentMapY) {
+// Parâmetro isPlaying_when_game_paused corrigido para bool
+void DrawPauseScreen(Player players_arr[], float currentVolume, int currentMusicIndex, bool isPlaying_when_game_paused, int currentMapX, int currentMapY) {
     DrawPlayingScreen(players_arr, currentActivePlayers, currentVolume, currentMusicIndex, isPlaying_when_game_paused, currentMapX, currentMapY);
     DrawPauseMenuElements();
 }

@@ -1,7 +1,9 @@
 #include "../include/Classes.h"
-#include <string.h> 
-#include "raylib.h" 
-#include <stddef.h> 
+#include "../include/Inventory.h" // *** ADICIONADO PARA ACESSAR TAB_INVENTORY ***
+#include <string.h>
+#include "raylib.h"
+#include <stddef.h> // Para NULL
+
 
 void init_player_inventory(Player *p) {
     if (!p) return;
@@ -22,12 +24,10 @@ void init_player_equipment(Player *p) {
 
 void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, SpriteType sprite_type){
     if (!p) return;
-
-    // Limpa a estrutura do jogador para evitar dados antigos, especialmente para texturas
-    memset(p, 0, sizeof(Player)); 
+    memset(p, 0, sizeof(Player));
 
     p->classe = classe_jogador;
-    p->spriteType = sprite_type; 
+    p->spriteType = sprite_type;
 
     if (nome_jogador != NULL && strlen(nome_jogador) > 0) {
         strncpy(p->nome, nome_jogador, MAX_PLAYER_NAME_LENGTH - 1);
@@ -38,8 +38,8 @@ void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, Spr
             case MAGO:    strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Bruxo" : "Feiticeiro");    break;
             case ARQUEIRO:  strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Caçador Infernal" : "Precisao");  break;
             case BARBARO: strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Bruto Vil" : "Furia"); break;
-            case LADINO:  strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Sombra Ardente" : "Espiao");  break; // Nome do Ladino ajustado
-            case CLERIGO: strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Acólito Negro" : "Devoto"); break;
+            case LADINO:  strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Sombra Ardente" : "Espiao");  break;
+            case CLERIGO: strcpy(p->nome, (sprite_type == SPRITE_TYPE_DEMONIO) ? "Acolito Negro" : "Devoto"); break;
             default:      strcpy(p->nome, "Aventureiro");   break;
         }
     }
@@ -55,23 +55,22 @@ void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, Spr
         case CLERIGO: p->max_vida=90;p->ataque=9;p->defesa=9;p->max_mana=90;p->max_stamina=70;p->magic_attack=15;p->magic_defense=15;p->forca=5;p->percepcao=6;p->resistencia=6;p->carisma=7;p->inteligencia=7;p->agilidade=3;p->sorte=6;break;
         default: p->max_vida=100;p->ataque=10;p->defesa=10;p->max_mana=10;p->max_stamina=75;p->magic_attack=5;p->magic_defense=5;p->forca=5;p->percepcao=5;p->resistencia=5;p->carisma=5;p->inteligencia=5;p->agilidade=5;p->sorte=5; break;
     }
-    p->vida = p->max_vida;    
-    p->mana = p->max_mana;    
-    p->stamina = p->max_stamina; 
+    p->vida = p->max_vida;
+    p->mana = p->max_mana;
+    p->stamina = p->max_stamina;
 
-    p->width = 24; 
-    p->height = 36; 
+    // As dimensões serão definidas por LoadCharacterAnimations com base nas texturas.
+    // Os valores aqui são apenas fallbacks iniciais.
+    p->width = 36;
+    p->height = 54;
 
     init_player_inventory(p);
     init_player_equipment(p);
-    p->current_inventory_tab = 0;
+    p->current_inventory_tab = TAB_INVENTORY; // TAB_INVENTORY vem de Inventory.h
 
     p->currentAnimFrame = 0;
     p->frameTimer = 0.0f;
-    p->frameDuration = 0.15f; 
-    p->facingDir = DIR_DOWN;  
+    p->frameDuration = 0.15f;
+    p->facingDir = DIR_DOWN;
     p->isMoving = false;
-
-    // As texturas são zeradas pelo memset no início da função.
-    // A carga real é feita em LoadCharacterAnimations.
 }
