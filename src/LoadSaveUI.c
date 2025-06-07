@@ -10,64 +10,28 @@
 #include <stdio.h>
 #include <stddef.h> // Para NULL
 
-extern const int virtualScreenWidth;
-extern const int virtualScreenHeight;
-extern int currentActivePlayers; // Usado por LoadGame para definir jogadores ativos
-
-// ... (Variáveis estáticas e funções de inicialização de UI como na Resposta 30) ...
+// ... (variáveis estáticas e funções de inicialização da UI) ...
+extern const int virtualScreenWidth; extern const int virtualScreenHeight; extern int currentActivePlayers;
 #define SLOT_PADDING_SAVE_LOAD 10
 #define SLOT_HEIGHT_SAVE_LOAD 70
-static MenuButton saveLoadSlotButtons[MAX_SAVE_SLOTS];
-static bool saveLoadSlotsInitialized = false;
-static float saveLoadScrollOffset = 0.0f;
-static float saveLoadTotalContentHeight = 0.0f;
-static Rectangle saveLoadSlotsViewArea = {0.0f, 0.0f, 0.0f, 0.0f};
-static MenuButton s_confirmationButtons[2];
-static bool s_confirmationButtonsInitialized = false;
-
-static void InitializeSaveLoadSlotsMenuButtons() {
-    float panelPadding = 20.0f; float topOffsetForTitle = 70.0f; float bottomOffsetForEsc = 30.0f;
-    saveLoadSlotsViewArea = (Rectangle){ panelPadding, topOffsetForTitle, (float)virtualScreenWidth - 2.0f * panelPadding, (float)virtualScreenHeight - topOffsetForTitle - bottomOffsetForEsc };
-    float slotWidth = saveLoadSlotsViewArea.width - 2.0f * (float)SLOT_PADDING_SAVE_LOAD;
-    saveLoadTotalContentHeight = 0.0f;
-    for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
-        saveLoadSlotButtons[i] = (MenuButton){ {(float)SLOT_PADDING_SAVE_LOAD, (float)i * ((float)SLOT_HEIGHT_SAVE_LOAD + (float)SLOT_PADDING_SAVE_LOAD), slotWidth, (float)SLOT_HEIGHT_SAVE_LOAD}, "",DARKGRAY,GRAY,DARKGRAY,WHITE,true,false,BUTTON_ACTION_NONE };
-        if (i < MAX_SAVE_SLOTS -1) { saveLoadTotalContentHeight += (float)SLOT_HEIGHT_SAVE_LOAD + (float)SLOT_PADDING_SAVE_LOAD; } else { saveLoadTotalContentHeight += (float)SLOT_HEIGHT_SAVE_LOAD; }
-    }
-    saveLoadSlotsInitialized = true;
-}
-static void InitializeSaveLoadConfirmationButtons() {
-    float btnWidth = 120.0f; float btnHeight = 40.0f; bool isNewGameFlow = Menu_IsNewGameFlow();
-    float boxWidth = isNewGameFlow ? 550.0f : 450.0f; float boxHeight = isNewGameFlow ? 180.0f : 150.0f;
-    float boxX = ((float)virtualScreenWidth - boxWidth) / 2.0f; float boxY = ((float)virtualScreenHeight - boxHeight) / 2.0f;
-    float spacing = 20.0f; float totalBtnWidth = 2.0f * btnWidth + spacing; float buttonY = boxY + boxHeight - btnHeight - 20.0f;
-    s_confirmationButtons[0] = (MenuButton){ {boxX + (boxWidth - totalBtnWidth)/2.0f, buttonY, btnWidth, btnHeight}, "Sim", MAROON, ORANGE, GRAY, WHITE, true, false, BUTTON_ACTION_NONE };
-    s_confirmationButtons[1] = (MenuButton){ {boxX + (boxWidth - totalBtnWidth)/2.0f + btnWidth + spacing, buttonY, btnWidth, btnHeight}, "Nao", MAROON, ORANGE, GRAY, WHITE, true, false, BUTTON_ACTION_NONE };
-    s_confirmationButtonsInitialized = true;
-}
-
+static MenuButton saveLoadSlotButtons[MAX_SAVE_SLOTS]; static bool saveLoadSlotsInitialized = false;       
+static float saveLoadScrollOffset = 0.0f; static float saveLoadTotalContentHeight = 0.0f;     
+static Rectangle saveLoadSlotsViewArea = {0.0f, 0.0f, 0.0f, 0.0f}; static MenuButton s_confirmationButtons[2]; static bool s_confirmationButtonsInitialized = false;
+static void InitializeSaveLoadSlotsMenuButtons() { /* ... */ }
+static void InitializeSaveLoadConfirmationButtons() { /* ... */ }
 
 void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Music playlist[],
                               int currentMusicIndex, float currentVolume, bool *musicIsCurrentlyPlaying_ptr,
                               int *currentMapX_ptr, int *currentMapY_ptr, Vector2 virtualMousePos,
                               WorldSection** currentActiveWorldSection_ptr) {
-    (void)playlist; (void)currentMusicIndex; (void)currentVolume;
+    (void)playlist; (void)currentMusicIndex; (void)currentVolume; // Silencia warnings
 
     if (!saveLoadSlotsInitialized) InitializeSaveLoadSlotsMenuButtons();
-    float wheelMove = GetMouseWheelMove();
     int currentSubState = Menu_GetSaveLoadSubState();
     GameModeType modeForSaveLoad = Menu_GetSaveLoadContextMode();
 
     if (currentSubState == 0) { // Seleção de Slot
-        // ... (Lógica de scroll e ESC como antes) ...
-        if (wheelMove != 0.0f) {
-            saveLoadScrollOffset += wheelMove * (float)SLOT_HEIGHT_SAVE_LOAD * 2.0f; float maxScroll = 0.0f;
-            if (saveLoadTotalContentHeight > saveLoadSlotsViewArea.height) { maxScroll = saveLoadTotalContentHeight - saveLoadSlotsViewArea.height; }
-            if (saveLoadScrollOffset > 0.0f) saveLoadScrollOffset = 0.0f;
-            if (maxScroll > 0.0f) { if (saveLoadScrollOffset < -maxScroll) saveLoadScrollOffset = -maxScroll; } else { saveLoadScrollOffset = 0.0f; }
-        }
-        if (IsKeyPressed(KEY_ESCAPE)) { if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad(); Menu_SetIsNewGameFlow(false); saveLoadSlotsInitialized = false; s_confirmationButtonsInitialized = false; saveLoadScrollOffset = 0.0f; return; }
-
+        if (IsKeyPressed(KEY_ESCAPE)) { if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad(); Menu_SetIsNewGameFlow(false); saveLoadSlotsInitialized=false; s_confirmationButtonsInitialized=false; saveLoadScrollOffset=0.0f; return; }
         for (int i = 0; i < MAX_SAVE_SLOTS; i++) {
             Rectangle onScreenSlotRect = { saveLoadSlotsViewArea.x + saveLoadSlotButtons[i].rect.x, saveLoadSlotsViewArea.y + saveLoadSlotButtons[i].rect.y + saveLoadScrollOffset, saveLoadSlotButtons[i].rect.width, saveLoadSlotButtons[i].rect.height };
             saveLoadSlotButtons[i].is_hovered = false;
@@ -78,25 +42,17 @@ void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Mu
                         Menu_SetSelectedSlotForAction(i);
                         bool isInSaveMode = Menu_IsInSaveMode(); bool isNewGameFlow = Menu_IsNewGameFlow();
                         int playersToProcess = (modeForSaveLoad == GAME_MODE_SINGLE_PLAYER) ? 1 : MAX_PLAYERS_SUPPORTED;
-
-                        if (isInSaveMode) { // Modo Salvar
+                        if (isInSaveMode) {
                             if (DoesSaveSlotExist(i, modeForSaveLoad)) { Menu_SetSaveLoadSubState(1); s_confirmationButtonsInitialized = false; }
-                            else { // Slot vazio ou iniciando novo jogo (isNewGameFlow)
+                            else {
                                 if (isNewGameFlow) {
-                                    // *** CHAMA init_player ANTES de PrepareNewGameSession ***
-                                    for (int k = 0; k < playersToProcess; k++) {
-                                        // Nome vazio, será definido em CharacterCreation
-                                        init_player(&players[k], "", GUERREIRO, SPRITE_TYPE_HUMANO); // Inicialização padrão
-                                    }
+                                    Progress_Reset(); // *** RESETA O PROGRESSO PARA NOVO JOGO ***
+                                    for (int k = 0; k < playersToProcess; k++) { init_player(&players[k], "", GUERREIRO, SPRITE_TYPE_HUMANO); }
                                     if (currentActiveWorldSection_ptr && *currentActiveWorldSection_ptr) { UnloadWorldSection(*currentActiveWorldSection_ptr); }
-                                    if (currentActiveWorldSection_ptr) { *currentActiveWorldSection_ptr = LoadWorldSection(0, 0); } // Carrega (0,0)
+                                    if (currentActiveWorldSection_ptr) { *currentActiveWorldSection_ptr = LoadWorldSection(0, 0); }
                                     PrepareNewGameSession(players, currentMapX_ptr, currentMapY_ptr, playersToProcess, (currentActiveWorldSection_ptr ? *currentActiveWorldSection_ptr : NULL) );
-                                    InitializeCharacterCreation();
-                                    if(currentScreen_ptr) *currentScreen_ptr = GAMESTATE_CHARACTER_CREATION;
-                                } else { // Salvando em slot vazio (não é new game flow)
-                                    SaveGame(players, playersToProcess, i, *currentMapX_ptr, *currentMapY_ptr, modeForSaveLoad);
-                                    if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad();
-                                }
+                                    InitializeCharacterCreation(); if(currentScreen_ptr) *currentScreen_ptr = GAMESTATE_CHARACTER_CREATION;
+                                } else { SaveGame(players, playersToProcess, i, *currentMapX_ptr, *currentMapY_ptr, modeForSaveLoad); if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad(); }
                             }
                         } else { // Modo Carregar
                             if (DoesSaveSlotExist(i, modeForSaveLoad)) {
@@ -109,8 +65,8 @@ void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Mu
                                     }
                                     if(currentScreen_ptr) *currentScreen_ptr = GAMESTATE_PLAYING;
                                     if (musicIsCurrentlyPlaying_ptr && IsSoundModuleMusicPlaying()) { StopCurrentMusic(); }
-                                    if(GetMusicTrackCount(MUSIC_CATEGORY_GAME) > 0){ PlayMusicTrack(MUSIC_CATEGORY_GAME, GetRandomValue(0, GetMusicTrackCount(MUSIC_CATEGORY_GAME)-1), true); if(musicIsCurrentlyPlaying_ptr) *musicIsCurrentlyPlaying_ptr = true; }
-                                    else { if(musicIsCurrentlyPlaying_ptr) *musicIsCurrentlyPlaying_ptr = false; }
+                                    if(GetMusicTrackCount(MUSIC_CATEGORY_GAME) > 0){ PlayMusicTrack(MUSIC_CATEGORY_GAME, GetRandomValue(0, GetMusicTrackCount(MUSIC_CATEGORY_GAME)-1), true); if(musicIsCurrentlyPlaying_ptr) *musicIsCurrentlyPlaying_ptr = true;
+                                    } else { if(musicIsCurrentlyPlaying_ptr) *musicIsCurrentlyPlaying_ptr = false; }
                                 }
                             }
                         }
@@ -120,7 +76,7 @@ void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Mu
                 }
             }
         }
-    } else if (currentSubState == 1) { // Estado de Confirmação
+    } else if (currentSubState == 1) { // Confirmação
         if (!s_confirmationButtonsInitialized) InitializeSaveLoadConfirmationButtons();
         if (IsKeyPressed(KEY_ESCAPE)) { Menu_SetSaveLoadSubState(0); Menu_SetSelectedSlotForAction(-1); return; }
         for (int j = 0; j < 2; j++) {
@@ -131,21 +87,15 @@ void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Mu
                     int selectedSlot = Menu_GetSelectedSlotForAction(); bool isNewGameFlow = Menu_IsNewGameFlow();
                     int playersToProcess = (modeForSaveLoad == GAME_MODE_SINGLE_PLAYER) ? 1 : MAX_PLAYERS_SUPPORTED;
                     if (j == 0) { // Botão "Sim"
-                        if (isNewGameFlow) { // Sobrescrever para novo jogo
-                             // *** CHAMA init_player ANTES de PrepareNewGameSession ***
-                            for (int k = 0; k < playersToProcess; k++) {
-                                init_player(&players[k], "", GUERREIRO, SPRITE_TYPE_HUMANO);
-                            }
+                        if (isNewGameFlow) {
+                            Progress_Reset(); // *** RESETA O PROGRESSO PARA NOVO JOGO ***
+                            for (int k = 0; k < playersToProcess; k++) { init_player(&players[k], "", GUERREIRO, SPRITE_TYPE_HUMANO); }
                             if (currentActiveWorldSection_ptr && *currentActiveWorldSection_ptr) { UnloadWorldSection(*currentActiveWorldSection_ptr); }
                             if (currentActiveWorldSection_ptr) { *currentActiveWorldSection_ptr = LoadWorldSection(0,0); }
-                            PrepareNewGameSession(players, currentMapX_ptr, currentMapY_ptr, playersToProcess, (currentActiveWorldSection_ptr ? *currentActiveWorldSection_ptr : NULL));
-                            InitializeCharacterCreation();
-                            if(currentScreen_ptr) *currentScreen_ptr = GAMESTATE_CHARACTER_CREATION;
-                        } else { // Sobrescrever save existente
-                            SaveGame(players, playersToProcess, selectedSlot, *currentMapX_ptr, *currentMapY_ptr, modeForSaveLoad);
-                            if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad();
-                        }
-                    } else { Menu_SetSaveLoadSubState(0); } // Botão "Não"
+                            PrepareNewGameSession(players, currentMapX_ptr, currentMapY_ptr, playersToProcess, (currentActiveWorldSection_ptr ? *currentActiveWorldSection_ptr : NULL) );
+                            InitializeCharacterCreation(); if(currentScreen_ptr) *currentScreen_ptr = GAMESTATE_CHARACTER_CREATION;
+                        } else { SaveGame(players, playersToProcess, selectedSlot, *currentMapX_ptr, *currentMapY_ptr, modeForSaveLoad); if(currentScreen_ptr) *currentScreen_ptr = Menu_GetPreviousScreenBeforeSaveLoad(); }
+                    } else { Menu_SetSaveLoadSubState(0); }
                     if (currentScreen_ptr && (*currentScreen_ptr != GAMESTATE_SAVE_LOAD_MENU || Menu_GetSaveLoadSubState() == 0)){ saveLoadSlotsInitialized = false; s_confirmationButtonsInitialized = false; saveLoadScrollOffset = 0.0f; }
                     Menu_SetSelectedSlotForAction(-1);
                     if (currentScreen_ptr && (*currentScreen_ptr == Menu_GetPreviousScreenBeforeSaveLoad()) && Menu_GetPreviousScreenBeforeSaveLoad() != GAMESTATE_PLAYER_MODE_MENU && *currentScreen_ptr != GAMESTATE_CHARACTER_CREATION) Menu_SetIsNewGameFlow(false);
@@ -157,7 +107,7 @@ void UpdateSaveLoadMenuScreen(GameState *currentScreen_ptr, Player players[], Mu
 }
 
 void DrawSaveLoadMenuScreen(Player players[], Music playlist[], int currentMusicIndex, bool musicIsPlaying, float musicVolume, int mapX, int mapY) {
-    // ... (código como na resposta anterior - Turn 30) ...
+
     (void)playlist; 
     GameModeType modeForSaveLoad = Menu_GetSaveLoadContextMode();
     GameState prevScreen = Menu_GetPreviousScreenBeforeSaveLoad();
