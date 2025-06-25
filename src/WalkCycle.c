@@ -109,7 +109,7 @@ void UpdateWalkCycle(Player *player, bool isMovingAgora, float moveX, float move
 }
 
 Texture2D GetCurrentCharacterSprite(Player *player) {
-    Texture2D emptyTexture = { .id = 0 };
+    Texture2D emptyTexture = { .id = 0, .width = 0, .height = 0, .mipmaps = 0, .format = 0 };
     if (!player) return emptyTexture;
     Texture2D* targetFrames = NULL;
     int numFramesInDir = 0;

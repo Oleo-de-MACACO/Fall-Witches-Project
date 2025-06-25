@@ -4,44 +4,32 @@
 #include "../include/WalkCycle.h"
 #include "../include/WorldMap.h"
 #include "../include/WorldLoading.h"
-#include "../include/Event.h"
-#include "../include/Dialogue.h"
 #include <raylib.h>
-#include <raymath.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 
-// Globais de main.c, declaradas extern em Game.h
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
 extern const int gameSectionWidthMultiplier;
 extern const int gameSectionHeightMultiplier;
 
-/**
- * @brief Atualiza a câmera para centralizar nos jogadores, com limites de zoom dinâmicos.
- */
 void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numActivePlayers, float sectionActualWidth, float sectionActualHeight) {
     if (!camera || !players || numActivePlayers <= 0 || sectionActualWidth <= 0 || sectionActualHeight <= 0) return;
 
-    // --- Limites de Zoom ---
-    // Máximo Zoom In (mais perto): Definido por uma largura de mundo desejada.
-    const float TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM = 320.0f; // Ex: Largura da sua imagem de referência
+    const float TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM = 320.0f;
     const float MAX_CAMERA_ZOOM = (TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM > 0) ? ((float)virtualScreenWidth / TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM) : 1.0f;
 
-    // Mínimo Zoom Out (mais longe): Definido pela necessidade de caber a seção atual na tela.
     float zoomToFitWidth = (float)virtualScreenWidth / sectionActualWidth;
     float zoomToFitHeight = (float)virtualScreenHeight / sectionActualHeight;
     const float MIN_CAMERA_ZOOM_FIT_SECTION = fminf(zoomToFitWidth, zoomToFitHeight);
 
-    // --- Cálculo do Zoom e Target ---
     if (numActivePlayers == 1) {
         camera->target.x = (float)players[0].posx + ((float)players[0].width / 2.0f);
         camera->target.y = (float)players[0].posy + ((float)players[0].height / 2.0f);
-        camera->zoom = 1.2f; // Um bom zoom padrão para 1 jogador
+        camera->zoom = 1.2f;
     } else if (numActivePlayers >= 2) {
-        // Calcula o zoom dinâmico para manter ambos os jogadores na tela
         camera->target.x = (((float)players[0].posx + ((float)players[0].width / 2.0f)) + ((float)players[1].posx + ((float)players[1].width / 2.0f))) / 2.0f;
         camera->target.y = (((float)players[0].posy + ((float)players[0].height / 2.0f)) + ((float)players[1].posy + ((float)players[1].height / 2.0f))) / 2.0f;
         float minX = fminf((float)players[0].posx, (float)players[1].posx);
@@ -55,11 +43,9 @@ void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numAc
         camera->zoom = fminf(zoomRequiredX, zoomRequiredY);
     }
 
-    // Aplica os limites de zoom
     if (camera->zoom < MIN_CAMERA_ZOOM_FIT_SECTION) camera->zoom = MIN_CAMERA_ZOOM_FIT_SECTION;
     if (camera->zoom > MAX_CAMERA_ZOOM) camera->zoom = MAX_CAMERA_ZOOM;
     
-    // --- Limites de Posição da Câmera ---
     float visibleWorldHalfWidth = ((float)virtualScreenWidth / camera->zoom) / 2.0f;
     float visibleWorldHalfHeight = ((float)virtualScreenHeight / camera->zoom) / 2.0f;
     camera->target.x = fmaxf(visibleWorldHalfWidth, camera->target.x);
@@ -71,68 +57,93 @@ void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numAc
 }
 
 /**
- * @brief Movimenta um personagem, checando colisões iterativamente para evitar "tunneling".
+ * @brief Movimenta um personagem, checando colisões.
+ * @note Esta é uma versão reescrita e simplificada para corrigir o bug de movimento.
+ * Move o personagem de uma só vez por eixo e verifica a colisão, em vez de um loop pixel a pixel.
  */
 void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, int keyDown, int keyShift, const WorldSection* activeSection) {
     if (!player_obj || !activeSection || !activeSection->isLoaded) return;
-    int speed = 3; int sprintSpeed = 5;
-    int currentSpeed = IsKeyDown(keyShift) ? sprintSpeed : speed;
-    float totalDeltaX = 0; float totalDeltaY = 0;
-    if (IsKeyDown(keyLeft))  totalDeltaX -= currentSpeed;
-    if (IsKeyDown(keyRight)) totalDeltaX += currentSpeed;
-    if (IsKeyDown(keyUp))    totalDeltaY -= currentSpeed;
-    if (IsKeyDown(keyDown))  totalDeltaY += currentSpeed;
 
-    // Movimento X, passo a passo
-    for (int i = 0; i < fabsf(totalDeltaX); i++) {
-        int stepX = (totalDeltaX > 0) ? 1 : -1; int oldPosX = player_obj->posx;
-        player_obj->posx += stepX;
+    int speed = 3;
+    int sprintSpeed = 5;
+    int currentSpeed = IsKeyDown(keyShift) ? sprintSpeed : speed;
+
+    float deltaX = 0.0f;
+    float deltaY = 0.0f;
+
+    if (IsKeyDown(keyLeft))  deltaX -= (float)currentSpeed;
+    if (IsKeyDown(keyRight)) deltaX += (float)currentSpeed;
+    if (IsKeyDown(keyUp))    deltaY -= (float)currentSpeed;
+    if (IsKeyDown(keyDown))  deltaY += (float)currentSpeed;
+
+    // --- Movimento no Eixo X ---
+    if (deltaX != 0) {
+        int originalX = player_obj->posx;
+        player_obj->posx += (int)deltaX;
+
+        // *** CORREÇÃO: Usava 'originalY' antes de ser declarado. Deve usar a posição Y atual do jogador. ***
         Rectangle playerRect = { (float)player_obj->posx, (float)player_obj->posy, (float)player_obj->width, (float)player_obj->height };
-        bool collisionFound = false;
-        for (int c = 0; c < activeSection->collisionRectCount; c++) {
-            if (CheckCollisionRecs(playerRect, activeSection->collisionRects[c])) {
-                player_obj->posx = oldPosX; collisionFound = true; break;
+        for (int i = 0; i < activeSection->collisionRectCount; i++) {
+            if (CheckCollisionRecs(playerRect, activeSection->collisionRects[i])) {
+                player_obj->posx = originalX; // Reverte o movimento se houver colisão
+                break;
             }
-        } if (collisionFound) break;
+        }
     }
-    // Movimento Y, passo a passo
-    for (int i = 0; i < fabsf(totalDeltaY); i++) {
-        int stepY = (totalDeltaY > 0) ? 1 : -1; int oldPosY = player_obj->posy;
-        player_obj->posy += stepY;
+
+    // --- Movimento no Eixo Y ---
+    if (deltaY != 0) {
+        int originalY = player_obj->posy;
+        player_obj->posy += (int)deltaY;
+
+        // Checa colisão após o movimento em Y
         Rectangle playerRect = { (float)player_obj->posx, (float)player_obj->posy, (float)player_obj->width, (float)player_obj->height };
-        bool collisionFound = false;
-        for (int c = 0; c < activeSection->collisionRectCount; c++) {
-            if (CheckCollisionRecs(playerRect, activeSection->collisionRects[c])) {
-                player_obj->posy = oldPosY; collisionFound = true; break;
+        for (int i = 0; i < activeSection->collisionRectCount; i++) {
+            if (CheckCollisionRecs(playerRect, activeSection->collisionRects[i])) {
+                player_obj->posy = originalY; // Reverte o movimento se houver colisão
+                break;
             }
-        } if (collisionFound) break;
+        }
     }
-    // Clamp aos limites da seção
+
+    // Garante que o jogador permaneça dentro dos limites do mapa
     if (player_obj->posx < 0) player_obj->posx = 0;
     if (player_obj->posx > activeSection->width - player_obj->width) player_obj->posx = activeSection->width - player_obj->width;
     if (player_obj->posy < 0) player_obj->posy = 0;
     if (player_obj->posy > activeSection->height - player_obj->height) player_obj->posy = activeSection->height - player_obj->height;
 }
 
+
 void InitGameResources(Player players_arr[], Music mainPlaylist_arr[]) { (void)mainPlaylist_arr; if(players_arr == NULL) return; }
 
 void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY, int numActivePlayers, const WorldSection* worldSection) {
     if (!players_arr || !mapX || !mapY ) return;
     *mapX = 0; *mapY = 0;
-    for (int i = 0; i < numActivePlayers; i++) {
-        int p_width = (players_arr[i].width > 0) ? players_arr[i].width : 111;
-        int p_height = (players_arr[i].height > 0) ? players_arr[i].height : 150;
-        if (worldSection && worldSection->isLoaded && worldSection->width > 0) {
+
+    if (worldSection && worldSection->isLoaded && worldSection->playerSpawnCount > 0) {
+        TraceLog(LOG_INFO, "Pontos de spawn do jogador encontrados. Usando coordenadas do mapa.");
+        for (int i = 0; i < numActivePlayers; i++) {
+            int spawnIndex = (i < worldSection->playerSpawnCount) ? i : 0;
+            players_arr[i].posx = (int)worldSection->playerSpawns[spawnIndex].x;
+            players_arr[i].posy = (int)worldSection->playerSpawns[spawnIndex].y;
+            TraceLog(LOG_INFO, "Jogador %d posicionado em (%.0f, %.0f)", i, worldSection->playerSpawns[spawnIndex].x, worldSection->playerSpawns[spawnIndex].y);
+        }
+    } else if (worldSection && worldSection->isLoaded) {
+        TraceLog(LOG_WARNING, "Nenhum ponto de spawn do jogador definido no mapa! Usando o centro geométrico como fallback.");
+        for (int i = 0; i < numActivePlayers; i++) {
+            int p_width = (players_arr[i].width > 0) ? players_arr[i].width : 111;
+            int p_height = (players_arr[i].height > 0) ? players_arr[i].height : 150;
             float centerX = (float)worldSection->width / 2.0f;
             float centerY = (float)worldSection->height / 2.0f;
-            if (numActivePlayers == 1) { players_arr[i].posx = (int)(centerX - (float)p_width / 2.0f); }
-            else { players_arr[i].posx = (int)(centerX - (float)p_width + (i * ((float)p_width + 20.0f))); }
+            if (numActivePlayers == 1) {
+                players_arr[i].posx = (int)(centerX - (float)p_width / 2.0f);
+            } else {
+                players_arr[i].posx = (int)(centerX - (float)p_width + ((float)i * ((float)p_width + 20.0f)));
+            }
             players_arr[i].posy = (int)(centerY - (float)p_height / 2.0f);
-        } else {
-            int cSectH_fallback = gameSectionHeightMultiplier * virtualScreenHeight;
-            players_arr[i].posx = p_width + 50 + (i * 100);
-            players_arr[i].posy = cSectH_fallback / 2 - p_height / 2;
         }
+    } else {
+        TraceLog(LOG_ERROR, "PrepareNewGameSession chamada com uma secao de mundo invalida!");
     }
 }
 
@@ -141,13 +152,14 @@ void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int
                          float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr,
                          int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera,
                          const WorldSection* activeSection) {
+    (void)playlist_arr; (void)currentMusicIndex_ptr; (void)volume_ptr; (void)isPlaying_ptr;
+    (void)musicPlayingTimer_ptr; (void)currentMusicDuration_ptr;
+
     if (!currentScreen_ptr || !activeSection || !activeSection->isLoaded) { return; }
     
-    // Armazena posições antigas para animação
     int oldPosX[MAX_PLAYERS_SUPPORTED] = {0}; int oldPosY[MAX_PLAYERS_SUPPORTED] = {0};
     for (int i = 0; i < numActivePlayers; i++) { oldPosX[i] = players_arr[i].posx; oldPosY[i] = players_arr[i].posy; }
     
-    // Lógica de movimento e colisão
     if (currentGameMode == GAME_MODE_SINGLE_PLAYER) {
         if (numActivePlayers > 0) { SinglePlayer_HandleMovement(&players_arr[0], activeSection); }
     } else {
@@ -155,24 +167,24 @@ void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int
         if (numActivePlayers > 1) { move_character(&players_arr[1], KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_RIGHT_SHIFT, activeSection); }
     }
     
-    // Atualiza animações
     for (int i = 0; i < numActivePlayers; i++) {
         bool isMovingNow = (players_arr[i].posx != oldPosX[i] || players_arr[i].posy != oldPosY[i]);
-        float mX = (float)players_arr[i].posx - (float)oldPosX[i];
-        float mY = (float)players_arr[i].posy - (float)oldPosY[i];
+        float mX = (float)(players_arr[i].posx - oldPosX[i]);
+        float mY = (float)(players_arr[i].posy - oldPosY[i]);
         UpdateWalkCycle(&players_arr[i], isMovingNow, mX, mY);
     }
 
-    // Checa transição de mapa
+    // *** CORREÇÃO: A chamada para atualizar a câmera foi restaurada. ***
+    UpdateCameraCenteredOnPlayers(gameCamera, players_arr, numActivePlayers, (float)activeSection->width, (float)activeSection->height);
     WorldMap_CheckTransition(players_arr, numActivePlayers, currentMapX_ptr, currentMapY_ptr, currentGameMode, (float)activeSection->width, (float)activeSection->height);
     
-    // Checa input de pausa/inventário
     if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) { *currentScreen_ptr = GAMESTATE_PAUSE; }
     if (IsKeyPressed(KEY_E)) { *currentScreen_ptr = GAMESTATE_INVENTORY; }
 }
 
 void DrawPlayingScreen(Player players_arr[], int numActivePlayers, float currentVolume, int currentMusicIndex, bool isPlaying, int currentMapX, int currentMapY) {
-    // A função que chama (em main.c) já limpou o fundo com DrawWorldSectionBackground
+    (void)currentVolume; (void)currentMusicIndex; (void)isPlaying; (void)currentMapX; (void)currentMapY;
+
     for (int i = 0; i < numActivePlayers; i++) {
         Texture2D currentSprite = GetCurrentCharacterSprite(&players_arr[i]);
         if (currentSprite.id > 0) {
@@ -183,5 +195,4 @@ void DrawPlayingScreen(Player players_arr[], int numActivePlayers, float current
             DrawRectangle(players_arr[i].posx, players_arr[i].posy, players_arr[i].width, players_arr[i].height, GRAY);
         }
     }
-    // O HUD idealmente é desenhado em main.c após EndMode2D para ser fixo na tela
 }

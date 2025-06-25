@@ -31,8 +31,9 @@ static const float TIME_PER_CHAR = 60.0f / CHARS_PER_MINUTE; // Tempo para cada 
 // --- Funções Auxiliares Internas ---
 static void AddDialogueToList(Dialogue dialogue) {
     if (s_dialogueCount >= s_dialogueCapacity) {
-        s_dialogueCapacity = (s_eventCapacity == 0) ? 16 : s_eventCapacity * 2;
-        s_allDialogues = (Dialogue*)RL_REALLOC(s_allDialogues, (size_t)s_eventCapacity * sizeof(Dialogue));
+        // *** CORRIGIDO: Usava s_eventCapacity por engano ***
+        s_dialogueCapacity = (s_dialogueCapacity == 0) ? 16 : s_dialogueCapacity * 2;
+        s_allDialogues = (Dialogue*)RL_REALLOC(s_allDialogues, (size_t)s_dialogueCapacity * sizeof(Dialogue));
         if (!s_allDialogues) { TraceLog(LOG_FATAL, "Dialogue_LoadAll: Falha ao alocar memoria para dialogos!"); return; }
     }
     s_allDialogues[s_dialogueCount++] = dialogue;
@@ -63,8 +64,8 @@ void Dialogue_LoadAll(const char* filePath) {
         return;
     }
     char lineBuffer[1024];
-    Dialogue currentDialogue = {0};
-    currentDialogue.id = -1;
+    // *** CORRIGIDO: Inicialização explícita para evitar warnings ***
+    Dialogue currentDialogue = {.id = -1, .lines = NULL, .lineCount = 0};
 
     while (fgets(lineBuffer, sizeof(lineBuffer), file)) {
         char* trimmedLine = TrimWhitespace(lineBuffer);
@@ -72,19 +73,20 @@ void Dialogue_LoadAll(const char* filePath) {
 
         if (strncmp(trimmedLine, "---", 3) == 0) {
             if (currentDialogue.id != -1) { AddDialogueToList(currentDialogue); }
-            currentDialogue = (Dialogue){0}; currentDialogue.id = -1;
+            currentDialogue = (Dialogue){.id = -1, .lines = NULL, .lineCount = 0};
             continue;
         }
         if (trimmedLine[0] == '#') {
             if (currentDialogue.id != -1) { AddDialogueToList(currentDialogue); } // Inicia um novo diálogo
-            currentDialogue = (Dialogue){0};
+            currentDialogue = (Dialogue){.id = 0, .lines = NULL, .lineCount = 0};
             sscanf(trimmedLine + 1, "%d", &currentDialogue.id);
             continue;
         }
         if (currentDialogue.id != -1) {
             char* speaker = strtok(trimmedLine, ":"); char* text = strtok(NULL, "\n");
             if (speaker && text) {
-                DialogueLine dialogueLine = {0};
+                // *** CORRIGIDO: Inicialização explícita para evitar warnings ***
+                DialogueLine dialogueLine = {.speaker = {0}, .text = {0}};
                 strncpy(dialogueLine.speaker, TrimWhitespace(speaker), MAX_SPEAKER_NAME_LENGTH - 1);
                 strncpy(dialogueLine.text, TrimWhitespace(text), MAX_DIALOGUE_LINE_LENGTH - 1);
                 AddLineToDialogue(&currentDialogue, dialogueLine);
@@ -125,7 +127,7 @@ void Dialogue_Update(void) {
     if (!s_isDialogueActive || !s_currentDialogue) return;
 
     const char* currentText = s_currentDialogue->lines[s_currentLineIndex].text;
-    int totalChars = strlen(currentText);
+    int totalChars = (int)strlen(currentText); // *** CORRIGIDO: Cast para int para evitar warning de comparação de sinais ***
 
     // Efeito de digitação
     if (s_visibleCharacters < totalChars) {
@@ -165,21 +167,23 @@ void Dialogue_Draw(void) {
     const char* fullText = currentLine->text;
 
     // Garante que não tentamos mostrar mais caracteres do que existem
-    if (s_visibleCharacters > strlen(fullText)) {
-        s_visibleCharacters = strlen(fullText);
+    if (s_visibleCharacters > (int)strlen(fullText)) { // *** CORRIGIDO: Cast para int ***
+        s_visibleCharacters = (int)strlen(fullText);
     }
     const char* visibleText = TextSubtext(fullText, 0, s_visibleCharacters);
 
+    // *** CORRIGIDO: Casts explícitos para (float) para evitar warnings de narrowing ***
     Rectangle dialogueBoxRect = {
-        DIALOGUE_BOX_PADDING,
-        GetScreenHeight() - DIALOGUE_BOX_HEIGHT - DIALOGUE_BOX_PADDING,
-        (float)GetScreenWidth() - (DIALOGUE_BOX_PADDING * 2),
-        DIALOGUE_BOX_HEIGHT
+        (float)DIALOGUE_BOX_PADDING,
+        (float)(GetScreenHeight() - DIALOGUE_BOX_HEIGHT - DIALOGUE_BOX_PADDING),
+        (float)(GetScreenWidth() - (DIALOGUE_BOX_PADDING * 2)),
+        (float)DIALOGUE_BOX_HEIGHT
     };
 
     // Desenha a caixa de diálogo com estilo JRPG
     DrawRectangleRec(dialogueBoxRect, Fade((Color){ 0, 20, 40, 255 }, 0.85f)); // Fundo azul escuro semi-transparente
-    DrawRectangleRoundedLines(dialogueBoxRect, 0.1f, 8, 3, Fade(SKYBLUE, 0.7f)); // Borda azulada
+    // *** CORRIGIDO: Chamada para DrawRectangleRoundedLinesEx com espessura da linha ***
+    DrawRectangleRoundedLinesEx(dialogueBoxRect, 0.1f, 8, 3.0f, Fade(SKYBLUE, 0.7f)); // Borda azulada
 
     // Desenha a caixa do nome do falante (se houver nome)
     if (strlen(currentLine->speaker) > 0) {
@@ -197,7 +201,7 @@ void Dialogue_Draw(void) {
              TEXT_FONT_SIZE, WHITE);
 
     // Desenha o prompt piscante para avançar, se todo o texto já foi revelado
-    if (s_visibleCharacters >= strlen(fullText)) {
+    if (s_visibleCharacters >= (int)strlen(fullText)) { // *** CORRIGIDO: Cast para int ***
         if (((int)(GetTime() * 2.0f)) % 2 == 0) { // Pisca a cada meio segundo
             Vector2 trianglePoints[3] = {
                 { dialogueBoxRect.x + dialogueBoxRect.width - 25, dialogueBoxRect.y + dialogueBoxRect.height - 25 },

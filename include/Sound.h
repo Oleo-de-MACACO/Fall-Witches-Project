@@ -1,7 +1,6 @@
 #ifndef SOUND_MANAGER_H
 #define SOUND_MANAGER_H
 
-#include "raylib.h"
 #include <stdbool.h>
 
 #define MAX_SOUND_FILES_PER_CATEGORY 50

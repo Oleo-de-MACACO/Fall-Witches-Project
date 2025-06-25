@@ -1,7 +1,6 @@
 #include "../include/Classes.h"
-#include "../include/Inventory.h" // *** ADICIONADO PARA ACESSAR TAB_INVENTORY ***
+#include "../include/Inventory.h" // Necessário para TAB_INVENTORY
 #include <string.h>
-#include "raylib.h"
 #include <stddef.h> // Para NULL
 
 
@@ -24,8 +23,20 @@ void init_player_equipment(Player *p) {
 
 void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, SpriteType sprite_type){
     if (!p) return;
+
+    // *** A CORREÇÃO DEFINITIVA ESTÁ AQUI ***
+    // 1. Salva a posição atual do jogador, que foi definida por PrepareNewGameSession.
+    int oldPosX = p->posx;
+    int oldPosY = p->posy;
+
+    // 2. Limpa a estrutura para definir valores padrão, o que anteriormente apagava a posição.
     memset(p, 0, sizeof(Player));
 
+    // 3. Restaura a posição salva, preservando o local de spawn correto.
+    p->posx = oldPosX;
+    p->posy = oldPosY;
+
+    // O resto da função continua normalmente, configurando a classe, nome e stats.
     p->classe = classe_jogador;
     p->spriteType = sprite_type;
 
@@ -59,14 +70,12 @@ void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, Spr
     p->mana = p->max_mana;
     p->stamina = p->max_stamina;
 
-    // As dimensões serão definidas por LoadCharacterAnimations com base nas texturas.
-    // Os valores aqui são apenas fallbacks iniciais.
     p->width = 36;
     p->height = 54;
 
     init_player_inventory(p);
     init_player_equipment(p);
-    p->current_inventory_tab = TAB_INVENTORY; // TAB_INVENTORY vem de Inventory.h
+    p->current_inventory_tab = TAB_INVENTORY;
 
     p->currentAnimFrame = 0;
     p->frameTimer = 0.0f;

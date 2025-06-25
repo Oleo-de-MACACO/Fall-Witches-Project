@@ -18,7 +18,6 @@
 #define COLOR_CHEST_SPAWN (Color){255, 255, 0,   255}
 #define COLOR_FORAGE_SPAWN (Color){0,   255, 255, 255}
 
-// Estruturas (WorldSection, etc.) como na Resposta 44
 typedef enum { SPAWN_TYPE_PLAYER, SPAWN_TYPE_ENEMY, SPAWN_TYPE_CHEST, SPAWN_TYPE_FORAGEABLE } SpawnType;
 typedef struct { Vector2 position; SpawnType type; } SpawnPoint;
 typedef struct { Vector2 position; bool isOpen; } DoorData;

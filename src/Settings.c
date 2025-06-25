@@ -8,7 +8,7 @@
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
 
-extern float masterVolume; // *** NOVO ***
+extern float masterVolume;
 extern float mainMenuMusicVolume;
 extern float gameplayMusicVolume;
 extern float battleMusicVolume;
@@ -28,9 +28,9 @@ static Rectangle settingsTabRects[SETTINGS_TAB_COUNT];
 static const char* titleSettings = "CONFIGURACOES";
 
 // Sliders
-static Rectangle masterVolumeSliderArea; // *** NOVO ***
-static Rectangle masterVolumeKnob;       // *** NOVO ***
-static bool masterVolumeKnobDragging;    // *** NOVO ***
+static Rectangle masterVolumeSliderArea;
+static Rectangle masterVolumeKnob;
+static bool masterVolumeKnobDragging;
 
 static Rectangle mainMenuMusicVolumeSliderArea, gameplayMusicVolumeSliderArea, battleMusicVolumeSliderArea, cutsceneMusicVolumeSliderArea,
                  ambientNatureVolumeSliderArea, ambientCityVolumeSliderArea, ambientCaveVolumeSliderArea, sfxVolumeSliderArea;
@@ -45,7 +45,7 @@ static Rectangle backButtonRect; static const char* backButtonText = "Voltar"; s
 #define SLIDER_HEIGHT_SETTINGS 18
 #define KNOB_WIDTH_SETTINGS 10
 #define KNOB_HEIGHT_SETTINGS 28
-#define V_SPACING_SLIDER_GROUP_SETTINGS 28 // Espaçamento vertical entre cada grupo (label + slider)
+#define V_SPACING_SLIDER_GROUP_SETTINGS 28
 #define TEXT_FONT_SIZE_SETTINGS 18
 #define TITLE_FONT_SIZE_SETTINGS 30
 #define TAB_PADDING_SETTINGS 10
@@ -77,15 +77,13 @@ static void Helper_UpdateVolumeSlider(Vector2 mousePoint, Rectangle sliderArea, 
             if (*targetVolumeVariable < 0.0f) *targetVolumeVariable = 0.0f;
             else if (*targetVolumeVariable > 1.0f) *targetVolumeVariable = 1.0f;
 
-            // Se o master volume mudou, ou qualquer volume de música mudou, atualiza a música tocando.
-            // Se SFX ou master mudou, atualiza todos os SFX.
             if (isMusicType || isMasterVolume) UpdateCurrentlyPlayingMusicVolume();
-            if (!isMusicType || isMasterVolume) ApplySfxVolume(); // Aplica a SFX se for slider de SFX ou master
+            if (!isMusicType || isMasterVolume) ApplySfxVolume();
         } else { *knobIsDragging = false; }
     }
 }
 
-static void Helper_DrawVolumeSlider(const char* labelText, Rectangle sliderArea, Rectangle* knobWidget, bool knobIsBeingDragged, float currentVolumeValue, int labelStartX) { /* ... como antes ... */
+static void Helper_DrawVolumeSlider(const char* labelText, Rectangle sliderArea, Rectangle* knobWidget, bool knobIsBeingDragged, float currentVolumeValue, int labelStartX) {
     char volTextBuffer[64]; sprintf(volTextBuffer, "%s: %d%%", labelText, (int)(currentVolumeValue * 100.0f));
     DrawText(volTextBuffer, labelStartX, (int)(sliderArea.y + sliderArea.height / 2.0f - (float)TEXT_FONT_SIZE_SETTINGS / 2.0f), TEXT_FONT_SIZE_SETTINGS, WHITE);
     DrawRectangleRec(sliderArea, LIGHTGRAY); DrawRectangleLinesEx(sliderArea, 1, DARKGRAY);
@@ -94,7 +92,6 @@ static void Helper_DrawVolumeSlider(const char* labelText, Rectangle sliderArea,
 }
 
 void InitializeSettingsScreen(GameState previousScreen) {
-    // (código de abas)
     screenToReturnTo = previousScreen; currentSettingsTab = SETTINGS_TAB_AUDIO;
     int topMarginForTitle = 40; int titleHeight = TITLE_FONT_SIZE_SETTINGS;
     int topMarginForTabs = topMarginForTitle + titleHeight + 20;
@@ -108,12 +105,11 @@ void InitializeSettingsScreen(GameState previousScreen) {
         tabStartX += tabWidth + TAB_PADDING_SETTINGS;
     }
 
-    int contentStartY = topMarginForTabs + TAB_HEIGHT_SETTINGS + 20; // Menos espaço para caber mais
+    int contentStartY = topMarginForTabs + TAB_HEIGHT_SETTINGS + 20;
     int audioLabelStartX = virtualScreenWidth / 2 - 280;
     int audioSliderStartX = audioLabelStartX + 300;
     float currentSliderY = (float)contentStartY;
 
-    // *** Slider do Volume Principal/Mestre ***
     Helper_SetupSliderGeometry(&masterVolumeSliderArea, &masterVolumeKnob, currentSliderY, audioSliderStartX);
     currentSliderY += (float)V_SPACING_SLIDER_GROUP_SETTINGS;
 
@@ -133,25 +129,22 @@ void InitializeSettingsScreen(GameState previousScreen) {
     currentSliderY += (float)V_SPACING_SLIDER_GROUP_SETTINGS;
     Helper_SetupSliderGeometry(&sfxVolumeSliderArea, &sfxVolumeKnob, currentSliderY, audioSliderStartX);
 
-    // (inicialização de keybinds e botão voltar)
-    int keybindListTitleY = contentStartY; // Reajusta se necessário
+    int keybindListTitleY = contentStartY;
     int keybindListStartY = keybindListTitleY + TEXT_FONT_SIZE_SETTINGS + V_SPACING_SLIDER_GROUP_SETTINGS / 2;
     int keybindListX = virtualScreenWidth / 2 - 200; int keybindListWidth = 400;
-    keybindViewAreaRect = (Rectangle){ (float)keybindListX - (float)TAB_PADDING_SETTINGS, (float)keybindListStartY, (float)keybindListWidth + (float)(2 * TAB_PADDING_SETTINGS), (float)virtualScreenHeight - (float)keybindListStartY - 60.0f }; // Ajusta altura
+    keybindViewAreaRect = (Rectangle){ (float)keybindListX - (float)TAB_PADDING_SETTINGS, (float)keybindListStartY, (float)keybindListWidth + (float)(2 * TAB_PADDING_SETTINGS), (float)virtualScreenHeight - (float)keybindListStartY - 60.0f };
     keybindTotalContentHeight = (float)numKeybindsToDisplay * ((float)TEXT_FONT_SIZE_SETTINGS + 5.0f);
     if (numKeybindsToDisplay > 0) keybindTotalContentHeight -= 5.0f;
     keybindScrollOffset = 0.0f;
 
     int backButtonWidth = 150; int backButtonHeight = 40;
-    // Ajusta Y do botão voltar para não sobrepor o último slider se a lista for grande
-    float bottomOfSliders = sfxVolumeSliderArea.y + SLIDER_HEIGHT_SETTINGS + 10;
-    float backButtonY = fmaxf(bottomOfSliders, (float)virtualScreenHeight - 70.0f);
+    float bottomOfContent = sfxVolumeSliderArea.y + SLIDER_HEIGHT_SETTINGS + 10;
+    float backButtonY = fmaxf(bottomOfContent, (float)virtualScreenHeight - 70.0f);
     if (backButtonY + (float)backButtonHeight > (float)virtualScreenHeight - 10) backButtonY = (float)virtualScreenHeight - 10 - (float)backButtonHeight;
-
 
     backButtonRect = (Rectangle){ (float)((float)virtualScreenWidth / 2 - (float)backButtonWidth / 2), backButtonY, (float)backButtonWidth, (float)backButtonHeight };
 
-    masterVolumeKnobDragging = false; // *** NOVO ***
+    masterVolumeKnobDragging = false;
     mainMenuMusicKnobDragging = gameplayMusicKnobDragging = battleMusicKnobDragging = cutsceneMusicKnobDragging = false;
     ambientNatureKnobDragging = ambientCityKnobDragging = ambientCaveKnobDragging = false;
     sfxKnobDragging = false;
@@ -159,7 +152,6 @@ void InitializeSettingsScreen(GameState previousScreen) {
 }
 
 void UpdateSettingsScreen(GameState *currentScreen_ptr) {
-    // ... (lógica de abas e botão voltar/ESC ) ...
     if (!currentScreen_ptr) return;
     if (!settingsScreenInitialized) { InitializeSettingsScreen(screenToReturnTo); }
     Vector2 mousePoint = GetMousePosition();
@@ -171,9 +163,7 @@ void UpdateSettingsScreen(GameState *currentScreen_ptr) {
     }
 
     if (currentSettingsTab == SETTINGS_TAB_AUDIO) {
-        // *** Atualiza Slider do Volume Principal/Mestre ***
-        Helper_UpdateVolumeSlider(mousePoint, masterVolumeSliderArea, &masterVolumeKnobDragging, &masterVolume, true, true); // isMusicType=true para atualizar música, isMasterVolume=true
-
+        Helper_UpdateVolumeSlider(mousePoint, masterVolumeSliderArea, &masterVolumeKnobDragging, &masterVolume, true, true);
         Helper_UpdateVolumeSlider(mousePoint, mainMenuMusicVolumeSliderArea, &mainMenuMusicKnobDragging, &mainMenuMusicVolume, true, false);
         Helper_UpdateVolumeSlider(mousePoint, gameplayMusicVolumeSliderArea, &gameplayMusicKnobDragging, &gameplayMusicVolume, true, false);
         Helper_UpdateVolumeSlider(mousePoint, battleMusicVolumeSliderArea, &battleMusicKnobDragging, &battleMusicVolume, true, false);
@@ -182,7 +172,7 @@ void UpdateSettingsScreen(GameState *currentScreen_ptr) {
         Helper_UpdateVolumeSlider(mousePoint, ambientCityVolumeSliderArea, &ambientCityKnobDragging, &ambientCityVolume, true, false);
         Helper_UpdateVolumeSlider(mousePoint, ambientCaveVolumeSliderArea, &ambientCaveKnobDragging, &ambientCaveVolume, true, false);
         Helper_UpdateVolumeSlider(mousePoint, sfxVolumeSliderArea, &sfxKnobDragging, &sfxVolume, false, false);
-    } else if (currentSettingsTab == SETTINGS_TAB_KEYBINDS) { /* ... lógica de scroll  ... */
+    } else if (currentSettingsTab == SETTINGS_TAB_KEYBINDS) {
         if (CheckCollisionPointRec(mousePoint, keybindViewAreaRect)) {
             float wheelMove = GetMouseWheelMove();
             if (wheelMove != 0.0f) {
@@ -201,7 +191,6 @@ void UpdateSettingsScreen(GameState *currentScreen_ptr) {
 }
 
 void DrawSettingsScreen(void) {
-    // ... (lógica de título e abas ) ...
     if (!settingsScreenInitialized) { InitializeSettingsScreen(screenToReturnTo); }
     ClearBackground(DARKGRAY);
     int topY = 40;
@@ -215,16 +204,12 @@ void DrawSettingsScreen(void) {
         DrawRectangleLinesEx(settingsTabRects[i], 1, (currentSettingsTab == (SettingsTabType)i) ? ORANGE : GRAY);
     }
 
-    int contentStartY = topY + TAB_HEIGHT_SETTINGS + 20; // Ajustado
-    int audioLabelStartX = virtualScreenWidth / 2 - 280; // X para o início do texto do Label
+    int contentStartY = topY + TAB_HEIGHT_SETTINGS + 20;
+    int audioLabelStartX = virtualScreenWidth / 2 - 280;
 
     if (currentSettingsTab == SETTINGS_TAB_AUDIO) {
-        float currentLabelY = (float)contentStartY; // Y para o texto do label, será incrementado
-
-        // *** Desenha Slider do Volume Principal/Mestre ***
+        // *** CORRIGIDO: A variável 'currentLabelY' não utilizada foi removida. O layout agora é controlado pelos retângulos dos sliders. ***
         Helper_DrawVolumeSlider("Volume Principal", masterVolumeSliderArea, &masterVolumeKnob, masterVolumeKnobDragging, masterVolume, audioLabelStartX);
-        currentLabelY += (float)V_SPACING_SLIDER_GROUP_SETTINGS; // Mover para o próximo grupo (não usado diretamente aqui, mas Helper_SetupSliderGeometry usou)
-
         Helper_DrawVolumeSlider("Menu Principal", mainMenuMusicVolumeSliderArea, &mainMenuMusicVolumeKnob, mainMenuMusicKnobDragging, mainMenuMusicVolume, audioLabelStartX);
         Helper_DrawVolumeSlider("Jogo Geral", gameplayMusicVolumeSliderArea, &gameplayMusicVolumeKnob, gameplayMusicKnobDragging, gameplayMusicVolume, audioLabelStartX);
         Helper_DrawVolumeSlider("Batalha", battleMusicVolumeSliderArea, &battleMusicVolumeKnob, battleMusicKnobDragging, battleMusicVolume, audioLabelStartX);
@@ -234,7 +219,7 @@ void DrawSettingsScreen(void) {
         Helper_DrawVolumeSlider("Amb. Caverna", ambientCaveVolumeSliderArea, &ambientCaveVolumeKnob, ambientCaveKnobDragging, ambientCaveVolume, audioLabelStartX);
         Helper_DrawVolumeSlider("Efeitos Sonoros", sfxVolumeSliderArea, &sfxVolumeKnob, sfxKnobDragging, sfxVolume, audioLabelStartX);
 
-    } else if (currentSettingsTab == SETTINGS_TAB_KEYBINDS) { /* ... (desenho de keybinds) ... */
+    } else if (currentSettingsTab == SETTINGS_TAB_KEYBINDS) {
         int keybindTitleY = contentStartY;
         DrawText("Atalhos Atuais (Nao Editaveis Ainda):", (int)(((float)virtualScreenWidth - (float)MeasureText("Atalhos Atuais (Nao Editaveis Ainda):", TEXT_FONT_SIZE_SETTINGS)) / 2.0f), keybindTitleY, TEXT_FONT_SIZE_SETTINGS, RAYWHITE);
         DrawRectangleLinesEx(keybindViewAreaRect, 1, GRAY);

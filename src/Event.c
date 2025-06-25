@@ -10,7 +10,6 @@
 // Removido o array estático s_visitedMaps e suas funções auxiliares.
 // Agora usaremos o sistema centralizado de GameProgress.
 
-// ... (AddEventToList, TrimWhitespace, StringToMusicCategory, ExecuteEventActions como na Resposta 44) ...
 static GameEvent* s_allEvents = NULL; static int s_eventCount = 0; static int s_eventCapacity = 0;
 static void AddEventToList(GameEvent event) {
     if (s_eventCount >= s_eventCapacity) { s_eventCapacity = (s_eventCapacity == 0) ? 16 : s_eventCapacity * 2;
@@ -58,7 +57,6 @@ void Event_LoadAll(const char* eventsFilePath) {
     // O progresso NÃO é mais resetado aqui. Ele é resetado apenas ao iniciar um "novo jogo".
     // Progress_Reset(); // REMOVIDO DAQUI
 
-    // ... (Lógica de parsing de arquivo como na Resposta 44) ...
     FILE* file = fopen(eventsFilePath, "rt"); if (!file) { TraceLog(LOG_ERROR, "Falha ao abrir eventos: %s", eventsFilePath); return; }
     char line[256]; GameEvent* currentEvent = NULL; int parseState = 0;
     while (fgets(line, sizeof(line), file)) {
@@ -97,7 +95,7 @@ void Event_LoadAll(const char* eventsFilePath) {
     fclose(file); TraceLog(LOG_INFO, "%d eventos carregados de '%s'", s_eventCount, eventsFilePath);
 }
 
-void Event_UnloadAll(void) { /* ... (como na Resposta 44) ... */ if (s_allEvents) { RL_FREE(s_allEvents); s_allEvents = NULL; } s_eventCount = 0; s_eventCapacity = 0; }
+void Event_UnloadAll(void) { if (s_allEvents) { RL_FREE(s_allEvents); s_allEvents = NULL; } s_eventCount = 0; s_eventCapacity = 0; }
 
 void Event_CheckAndRun(int currentMapX, int currentMapY) {
     for (int i = 0; i < s_eventCount; i++) {

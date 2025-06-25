@@ -1,7 +1,9 @@
 #ifndef MAP_DATA_H
 #define MAP_DATA_H
 
+#include "raylib.h"
 #include "Sound.h" // Para o enum MusicCategory
+#include "Classes.h" // Para definições de constantes como MAX_CHAR_NAME_LENGTH
 #include <stdbool.h>
 
 #define MAX_ALLOWED_MUSIC_CATEGORIES 5

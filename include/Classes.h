@@ -1,14 +1,17 @@
 #ifndef CLASSES_H
 #define CLASSES_H
 
-#include "raylib.h"
 #include <stdbool.h> // Para o tipo bool
+#include "raylib.h"
 
 // Constantes para limitar o tamanho de arrays de char, evitando buffer overflows.
 #define MAX_PLAYER_NAME_LENGTH 50
-#define MAX_INVENTORY_SLOTS 10
 #define MAX_ITEM_NAME_LENGTH 50
 #define MAX_PATH_LENGTH 128
+#define MAX_CHAR_NAME_LENGTH 50                 // *** ADICIONADO: Definição Faltante ***
+#define MAX_CHAR_SPRITE_FOLDER_LENGTH 128       // *** ADICIONADO: Definição Faltante ***
+#define MAX_INVENTORY_SLOTS 10
+
 
 // Enum para os diferentes tipos de sprites de personagens
 typedef enum {

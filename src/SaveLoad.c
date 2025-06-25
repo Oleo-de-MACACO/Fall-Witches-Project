@@ -11,7 +11,6 @@
 // *** INCREMENTA A VERSÃO DO SAVE PARA INVALIDAR SAVES ANTIGOS ***
 const unsigned int SAVEGAME_FILE_VERSION = 8; // Era 7
 
-// ... (Macros e funções auxiliares como na Resposta 44) ...
 #define FWRITE_CHECK(ptr, size, count, stream, file_ptr_for_close, error_message_prefix, filename_param) \
     items_written = fwrite(ptr, size, count, stream); \
     if (items_written != count) { \

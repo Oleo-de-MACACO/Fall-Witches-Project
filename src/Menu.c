@@ -1,6 +1,5 @@
 #include "../include/Menu.h"
 #include "../include/Game.h"
-#include "../include/Classes.h"
 #include "../include/Settings.h"
 #include "../include/Sound.h" // Para funções de som se o menu as controlar diretamente
 #include <stdio.h>

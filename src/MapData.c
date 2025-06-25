@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 // --- Armazenamento Estático para os Dados do Mapa Atual ---
+// *** CORRIGIDO: Usa {0} para inicializar a struct inteira, uma forma padrão e segura em C. ***
 static MapConfig s_currentMapConfig = {0};
 static NpcConfig s_npcConfigs[MAX_NPC_CONFIGS_PER_MAP];
 static int s_npcConfigCount = 0;
@@ -37,7 +38,7 @@ static MusicCategory StringToMusicCategory(const char* categoryName) {
     if (strcmp(categoryName, "Nature") == 0) return MUSIC_CATEGORY_AMBIENT_NATURE;
     if (strcmp(categoryName, "City") == 0) return MUSIC_CATEGORY_AMBIENT_CITY;
     if (strcmp(categoryName, "Cave") == 0) return MUSIC_CATEGORY_AMBIENT_CAVE;
-    return MUSIC_CATEGORY_GAME; // Retorna "Game" como padrão se não encontrar
+    return MUSIC_CATEGORY_GAME;
 }
 
 // --- Funções Públicas ---
@@ -51,14 +52,14 @@ void MapData_UnloadCurrent(void) {
 }
 
 void MapData_LoadForMap(int mapX, int mapY) {
-    MapData_UnloadCurrent(); // Limpa dados antigos
+    MapData_UnloadCurrent();
 
     char filePath[256];
     sprintf(filePath, "assets/MapVariables/%d-%d.txt", mapX, mapY);
 
     if (!FileExists(filePath)) {
         TraceLog(LOG_INFO, "MapData: Nenhum arquivo de variaveis encontrado para o mapa (%d,%d).", mapX, mapY);
-        return; // É normal um mapa não ter um arquivo de configuração.
+        return;
     }
 
     FILE* file = fopen(filePath, "rt");
@@ -68,13 +69,12 @@ void MapData_LoadForMap(int mapX, int mapY) {
     }
 
     char lineBuffer[256];
-    int parseState = 0; // 0: geral, 1: lendo npc, 2: lendo enemy_type, 3: lendo allowed_music
+    int parseState = 0;
 
     while (fgets(lineBuffer, sizeof(lineBuffer), file)) {
         char* line = TrimWhitespace(lineBuffer);
         if (strlen(line) == 0 || line[0] == '#') continue;
 
-        // Controle de blocos
         if (strcmp(line, "npc_start") == 0) { parseState = 1; continue; }
         if (strcmp(line, "enemy_type_start") == 0) { parseState = 2; continue; }
         if (strcmp(line, "allowed_music_start") == 0) { parseState = 3; continue; }
@@ -83,7 +83,6 @@ void MapData_LoadForMap(int mapX, int mapY) {
         if (strcmp(line, "enemy_type_end") == 0 && parseState == 2) { s_enemyTypeConfigCount++; parseState = 0; continue; }
         if (strcmp(line, "allowed_music_end") == 0 && parseState == 3) { parseState = 0; continue; }
         
-        // Parsing de lista de músicas
         if (parseState == 3) {
             if (s_currentMapConfig.numAllowedMusicCategories < MAX_ALLOWED_MUSIC_CATEGORIES) {
                 s_currentMapConfig.allowedMusic[s_currentMapConfig.numAllowedMusicCategories++] = StringToMusicCategory(line);
@@ -91,7 +90,6 @@ void MapData_LoadForMap(int mapX, int mapY) {
             continue;
         }
 
-        // Parsing de chave: valor
         char* key = strtok(line, ":");
         char* value = strtok(NULL, "\n");
         if (!key || !value) continue;
@@ -99,10 +97,10 @@ void MapData_LoadForMap(int mapX, int mapY) {
         value = TrimWhitespace(value);
 
         switch(parseState) {
-            case 0: // Geral
+            case 0:
                 if (strcmp(key, "enemy_spawn_chance") == 0) s_currentMapConfig.enemySpawnChance = atoi(value);
                 break;
-            case 1: // Lendo NPC
+            case 1:
                 if (s_npcConfigCount < MAX_NPC_CONFIGS_PER_MAP) {
                     if (strcmp(key, "name") == 0) strncpy(s_npcConfigs[s_npcConfigCount].name, value, MAX_CHAR_NAME_LENGTH - 1);
                     else if (strcmp(key, "dialogue_id") == 0) s_npcConfigs[s_npcConfigCount].dialogueId = atoi(value);
@@ -110,7 +108,7 @@ void MapData_LoadForMap(int mapX, int mapY) {
                     else if (strcmp(key, "spawn_coords") == 0) sscanf(value, "%f, %f", &s_npcConfigs[s_npcConfigCount].spawnCoords.x, &s_npcConfigs[s_npcConfigCount].spawnCoords.y);
                 }
                 break;
-            case 2: // Lendo Tipo de Inimigo
+            case 2:
                 if (s_enemyTypeConfigCount < MAX_ENEMY_TYPES_PER_MAP) {
                     if (strcmp(key, "name") == 0) strncpy(s_enemyTypeConfigs[s_enemyTypeConfigCount].name, value, MAX_CHAR_NAME_LENGTH - 1);
                     else if (strcmp(key, "sprite_folder") == 0) strncpy(s_enemyTypeConfigs[s_enemyTypeConfigCount].spriteFolder, value, MAX_CHAR_SPRITE_FOLDER_LENGTH - 1);

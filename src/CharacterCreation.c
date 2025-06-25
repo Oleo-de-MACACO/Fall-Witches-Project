@@ -2,16 +2,18 @@
 #include "../include/Classes.h"
 #include "../include/Game.h"
 #include "../include/WalkCycle.h"
+#include "../include/WorldLoading.h" // *** ADICIONADO: Necessário para carregar o mapa ***
 #include <stdio.h>
 #include <string.h>
 #include "raylib.h"
 #include <stddef.h> // Para NULL
 
-// ... (variáveis estáticas como antes) ...
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
 extern GameModeType currentGameMode;
 extern int currentActivePlayers;
+extern WorldSection* currentActiveWorldSection; // *** ADICIONADO: Ponteiro para o mapa ativo ***
+
 static int creation_step = 0;
 static char creation_player_names[MAX_PLAYERS_SUPPORTED][MAX_PLAYER_NAME_LENGTH];
 static int creation_name_letter_counts[MAX_PLAYERS_SUPPORTED] = {0};
@@ -30,7 +32,6 @@ static const char* CLASS_DISPLAY_NAMES[] = {"Guerreiro", "Mago", "Arqueiro", "Ba
 
 
 void InitializeCharacterCreation(void) {
-    // ... (código como antes) ...
     creation_step = 0;
     int playersToSetup = (currentGameMode == GAME_MODE_SINGLE_PLAYER) ? 1 : MAX_PLAYERS_SUPPORTED;
     for (int i = 0; i < playersToSetup; i++) {
@@ -46,10 +47,8 @@ void InitializeCharacterCreation(void) {
     creation_focus_on_sprite_type = false;
 }
 
-// Parâmetro musicIsPlaying_ptr corrigido para bool*
 void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[], int *mapX, int *mapY,
                                    Music playlist[], int currentMusicIndex, float currentVolume, bool *musicIsPlaying_ptr) {
-    // ... (lógica interna como antes, usando musicIsPlaying_ptr como bool*) ...
     if (!currentScreen_ptr || !players || !mapX || !mapY) return;
     int playersToConfigure = (currentGameMode == GAME_MODE_SINGLE_PLAYER) ? 1 : MAX_PLAYERS_SUPPORTED;
     int player_idx_configuring = creation_step / 2;
@@ -57,6 +56,8 @@ void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[
 
     if (creation_step == final_confirmation_step) {
         if (IsKeyPressed(KEY_ENTER)) {
+            // *** CORREÇÃO: Toda a lógica de inicialização de um novo jogo foi centralizada aqui ***
+            // 1. Finaliza os dados e a aparência do jogador
             for (int i = 0; i < playersToConfigure; i++) {
                 init_player(&players[i], creation_player_names[i], creation_player_classes[i], creation_player_sprite_types[i]);
                 LoadCharacterAnimations(&players[i]);
@@ -64,8 +65,16 @@ void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[
             if (currentGameMode == GAME_MODE_SINGLE_PLAYER && MAX_PLAYERS_SUPPORTED > 1) {
                 memset(&players[1], 0, sizeof(Player)); UnloadCharacterAnimations(&players[1]);
             }
-            *mapX = 0; *mapY = 0;
             currentActivePlayers = playersToConfigure;
+
+            // 2. Garante que qualquer mapa antigo seja descarregado e carrega o mapa inicial (0,0)
+            if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); }
+            currentActiveWorldSection = LoadWorldSection(0, 0);
+
+            // 3. Com o mapa carregado, posiciona os jogadores na posição inicial correta
+            PrepareNewGameSession(players, mapX, mapY, playersToConfigure, currentActiveWorldSection);
+
+            // 4. Inicia a música de gameplay e muda para a tela de jogo
             if (playlist && currentMusicIndex >= 0 && currentMusicIndex < MAX_MUSIC_PLAYLIST_SIZE && playlist[currentMusicIndex].stream.buffer != NULL && musicIsPlaying_ptr != NULL) {
                 if(IsMusicStreamPlaying(playlist[currentMusicIndex])) StopMusicStream(playlist[currentMusicIndex]);
                 PlayMusicStream(playlist[currentMusicIndex]); SetMusicVolume(playlist[currentMusicIndex], currentVolume);
@@ -87,7 +96,7 @@ void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[
             int key = GetCharPressed();
             while (key > 0) { if ((key>=32)&&(key<=125)&&(creation_name_letter_counts[player_idx_configuring]<MAX_PLAYER_NAME_LENGTH-1)) {creation_player_names[player_idx_configuring][creation_name_letter_counts[player_idx_configuring]]=(char)key; creation_name_letter_counts[player_idx_configuring]++; creation_player_names[player_idx_configuring][creation_name_letter_counts[player_idx_configuring]]='\0';} key=GetCharPressed(); }
             if (IsKeyPressed(KEY_BACKSPACE)) { if(creation_name_letter_counts[player_idx_configuring]>0){creation_name_letter_counts[player_idx_configuring]--; creation_player_names[player_idx_configuring][creation_name_letter_counts[player_idx_configuring]]='\0';}}
-            if (IsKeyPressed(KEY_ENTER)) { if(creation_name_letter_counts[player_idx_configuring]>0){creation_name_edit_mode[player_idx_configuring]=false; SetMouseCursor(MOUSE_CURSOR_DEFAULT); creation_step++; creation_focus_on_sprite_type=false;}}
+            if (IsKeyPressed(KEY_ENTER)) { if(strlen(creation_player_names[player_idx_configuring]) > 0){creation_name_edit_mode[player_idx_configuring]=false; SetMouseCursor(MOUSE_CURSOR_DEFAULT); creation_step++; creation_focus_on_sprite_type=false;}}
         } else { // Class and Sprite step
             SetMouseCursor(MOUSE_CURSOR_DEFAULT); creation_name_edit_mode[player_idx_configuring] = false;
             if (IsKeyPressed(KEY_TAB)) { creation_focus_on_sprite_type = !creation_focus_on_sprite_type; }
@@ -110,7 +119,8 @@ void UpdateCharacterCreationScreen(GameState *currentScreen_ptr, Player players[
     if (IsKeyPressed(KEY_ESCAPE)) { if (creation_step > 0) { creation_name_edit_mode[player_idx_configuring] = false; creation_focus_on_sprite_type = false; creation_step--; int new_idx = creation_step/2; if(creation_step%2==0){if(new_idx<playersToConfigure)creation_name_edit_mode[new_idx]=true;SetMouseCursor(MOUSE_CURSOR_IBEAM);}else{SetMouseCursor(MOUSE_CURSOR_DEFAULT);}} else { if(currentScreen_ptr)*currentScreen_ptr = GAMESTATE_PLAYER_MODE_MENU; }}
 }
 
-void DrawCharacterCreationScreen(Player players[]) { /* ... (código como antes) ... */
+
+void DrawCharacterCreationScreen(Player players[]) {
     (void)players;
     int playersToDisplay = (currentGameMode == GAME_MODE_SINGLE_PLAYER) ? 1 : MAX_PLAYERS_SUPPORTED;
     int player_idx_drawing = creation_step / 2;

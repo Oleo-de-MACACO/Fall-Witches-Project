@@ -29,14 +29,15 @@ extern float sfxVolume;
 static MusicTrack musicTracks[MUSIC_CATEGORY_COUNT][MAX_SOUND_FILES_PER_CATEGORY];
 static int numMusicTracks[MUSIC_CATEGORY_COUNT] = {0};
 
-static Sound soundEffects[MAX_SOUND_FILES_PER_CATEGORY]; // Para SFX genéricos
+static Sound soundEffects[MAX_SOUND_FILES_PER_CATEGORY];
 static int numSoundEffects = 0;
 
-static Music onDemandMusicTrack; // Para músicas carregadas via PlayMusicFile
+static Music onDemandMusicTrack;
 static bool  onDemandMusicLoaded = false;
 
 // --- Estado da Música Atualmente Tocando ---
-static Music currentPlayingMusic = {{0}}; // Inicialização com {0}
+// *** CORRIGIDO: Inicializador explícito e completo para a struct Music para evitar warnings ***
+static Music currentPlayingMusic = { .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
 static MusicCategory currentPlayingCategory = MUSIC_CATEGORY_COUNT;
 static int currentPlayingTrackIndex = -1;
 static bool isCurrentMusicPaused = false;
@@ -48,7 +49,7 @@ static bool isCurrentMusicPaused = false;
  * @return O volume final (0.0f a 1.0f) a ser aplicado.
  */
 static float GetEffectiveVolumeForCategory(MusicCategory category) {
-    float categoryVolume = gameplayMusicVolume; // Usa o volume de jogo como padrão
+    float categoryVolume = gameplayMusicVolume;
     switch (category) {
         case MUSIC_CATEGORY_MAINMENU:       categoryVolume = mainMenuMusicVolume; break;
         case MUSIC_CATEGORY_GAME:           categoryVolume = gameplayMusicVolume; break;
@@ -59,7 +60,7 @@ static float GetEffectiveVolumeForCategory(MusicCategory category) {
         case MUSIC_CATEGORY_AMBIENT_CAVE:   categoryVolume = ambientCaveVolume;   break;
         default: break;
     }
-    return categoryVolume * masterVolume; // Retorna o volume da categoria modulado pelo volume mestre
+    return categoryVolume * masterVolume;
 }
 
 /**
@@ -70,7 +71,7 @@ static float GetEffectiveVolumeForCategory(MusicCategory category) {
  */
 static void LoadMusicForCategoryInternal(const char* basePath, const char* categoryFolder, MusicCategory category) {
     if (category >= MUSIC_CATEGORY_COUNT) return;
-    numMusicTracks[category] = 0; // Reseta o contador para esta categoria
+    numMusicTracks[category] = 0;
 
     char directoryPath[512];
     sprintf(directoryPath, "%s/%s/", basePath, categoryFolder);
@@ -86,7 +87,6 @@ static void LoadMusicForCategoryInternal(const char* basePath, const char* categ
 
         musicTracks[category][numMusicTracks[category]].music = LoadMusicStream(files.paths[i]);
         if (musicTracks[category][numMusicTracks[category]].music.stream.buffer != NULL) {
-            // Armazena o nome do arquivo (sem o caminho) na nossa struct
             strncpy(musicTracks[category][numMusicTracks[category]].fileName, GetFileName(files.paths[i]), MAX_PATH_LENGTH - 1);
             musicTracks[category][numMusicTracks[category]].fileName[MAX_PATH_LENGTH - 1] = '\0';
             numMusicTracks[category]++;
@@ -147,7 +147,8 @@ void UpdateAudioStreams(void) {
 
 void StopCurrentMusic(void) {
     if (currentPlayingMusic.stream.buffer != NULL ) { StopMusicStream(currentPlayingMusic); }
-    currentPlayingMusic = (Music){{0}}; currentPlayingTrackIndex = -1;
+    currentPlayingMusic = (Music){ .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
+    currentPlayingTrackIndex = -1;
     currentPlayingCategory = MUSIC_CATEGORY_COUNT; isCurrentMusicPaused = false;
 }
 void PauseCurrentMusic(void) { if (currentPlayingMusic.stream.buffer != NULL && IsMusicStreamPlaying(currentPlayingMusic)) { PauseMusicStream(currentPlayingMusic); isCurrentMusicPaused = true; } }
@@ -168,7 +169,9 @@ void PlayMusicTrack(MusicCategory category, int trackIndex, bool loop) {
         PlayMusicStream(currentPlayingMusic);
         SetMusicVolume(currentPlayingMusic, GetEffectiveVolumeForCategory(category));
         currentPlayingCategory = category; currentPlayingTrackIndex = trackIndex; isCurrentMusicPaused = false;
-    } else { currentPlayingMusic = (Music){{0}}; }
+    } else {
+        currentPlayingMusic = (Music){ .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
+    }
 }
 
 void PlayRandomMusicFromCategory(MusicCategory category, bool loop) {
@@ -180,11 +183,11 @@ int Sound_GetMusicIndexByName(MusicCategory category, const char* songName) {
     if (category >= MUSIC_CATEGORY_COUNT || !songName || strlen(songName) == 0) return -1;
     for (int i = 0; i < numMusicTracks[category]; i++) {
         if (strcmp(musicTracks[category][i].fileName, songName) == 0) {
-            return i; // Encontrado
+            return i;
         }
     }
     TraceLog(LOG_WARNING, "Sound_GetMusicIndexByName: Musica '%s' nao encontrada na categoria %d.", songName, category);
-    return -1; // Não encontrado
+    return -1;
 }
 
 bool PlayMusicFile(const char* filePathInAssetsAudio, bool loop, MusicCategory assumedCategoryForVolume) {
@@ -197,7 +200,7 @@ bool PlayMusicFile(const char* filePathInAssetsAudio, bool loop, MusicCategory a
     onDemandMusicLoaded = true; currentPlayingMusic = onDemandMusicTrack; currentPlayingMusic.looping = loop;
     PlayMusicStream(currentPlayingMusic);
     SetMusicVolume(currentPlayingMusic, GetEffectiveVolumeForCategory(assumedCategoryForVolume));
-    currentPlayingCategory = assumedCategoryForVolume; currentPlayingTrackIndex = -2; // Valor especial para sob demanda
+    currentPlayingCategory = assumedCategoryForVolume; currentPlayingTrackIndex = -2;
     isCurrentMusicPaused = false;
     return true;
 }
