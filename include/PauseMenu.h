@@ -2,9 +2,8 @@
 #define PAUSE_MENU_H
 
 #include "raylib.h"
-#include "Game.h"
+#include "Game.h"   // *** ADICIONADO: Necessário para GameState, Player, Music ***
 
-// Assinaturas corrigidas para bool/bool*
 void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music playlist[],
                        int currentMusicIndex, bool isPlaying_beforePause, bool *musicIsCurrentlyPlaying_ptr,
                        Vector2 virtualMousePos);

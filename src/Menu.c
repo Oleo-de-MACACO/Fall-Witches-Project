@@ -1,6 +1,5 @@
 #include "../include/Menu.h"
 #include "../include/Game.h"
-#include "../include/Classes.h"
 #include "../include/Settings.h"
 #include "../include/Sound.h" // Para funções de som se o menu as controlar diretamente
 #include <stdio.h>
@@ -34,7 +33,7 @@ static GameModeType s_save_load_context_mode = GAME_MODE_TWO_PLAYER; // Ou GAME_
 #define COLOR_BUTTON_DISABLED GRAY
 #define COLOR_BUTTON_TEXT WHITE
 
-void InitializeMainMenuButtons() { /* ... (código como antes) ... */
+void InitializeMainMenuButtons() {
     float buttonWidth = 280.0f; float buttonHeight = 50.0f; float spacingY = 20.0f; float spacingX = 20.0f;
     float twoButtonRowWidth = 2.0f * buttonWidth + spacingX;
     // float totalButtonBlockHeight = 3.0f * buttonHeight + 2.0f * spacingY; // Não usado
@@ -53,7 +52,7 @@ void InitializeMainMenuButtons() { /* ... (código como antes) ... */
     mainMenuButtonsInitialized = true;
 }
 
-void UpdateMenuScreen(GameState *currentScreen_ptr, Vector2 virtualMousePos) { /* ... (código como antes, usando g_request_exit) ... */
+void UpdateMenuScreen(GameState *currentScreen_ptr, Vector2 virtualMousePos) { /* ... (código usando g_request_exit) ... */
     if (!currentScreen_ptr) return;
     if (!mainMenuButtonsInitialized) { InitializeMainMenuButtons(); }
     for (int i = 0; i < NUM_MAIN_MENU_BUTTONS; i++) {
@@ -83,7 +82,7 @@ void UpdateMenuScreen(GameState *currentScreen_ptr, Vector2 virtualMousePos) { /
         }
     }
 }
-void DrawMenuScreen(void) { /* ... (código como antes) ... */
+void DrawMenuScreen(void) { 
     if (!mainMenuButtonsInitialized) { InitializeMainMenuButtons(); }
     ClearBackground(DARKGRAY);
     DrawText("FALL WITCHES", (int)(((float)virtualScreenWidth - (float)MeasureText("FALL WITCHES", 70)) / 2.0f), (int)((float)virtualScreenHeight / 7.0f), 70, WHITE);
@@ -97,7 +96,7 @@ void DrawMenuScreen(void) { /* ... (código como antes) ... */
     DrawText("Use o mouse para selecionar.", 10, virtualScreenHeight-20, 10, LIGHTGRAY);
 }
 
-void UpdateIntroScreen(GameState *currentScreen_ptr, int *introFrames_ptr) { /* ... (código como antes) ... */
+void UpdateIntroScreen(GameState *currentScreen_ptr, int *introFrames_ptr) { 
     if(introFrames_ptr && currentScreen_ptr){
         (*introFrames_ptr)++;
         if (*introFrames_ptr > 180 || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_ESCAPE) || IsMouseButtonPressed(MOUSE_LEFT_BUTTON) ) {
@@ -107,14 +106,14 @@ void UpdateIntroScreen(GameState *currentScreen_ptr, int *introFrames_ptr) { /* 
         }
     }
 }
-void DrawIntroScreen(void) { /* ... (código como antes) ... */
+void DrawIntroScreen(void) { 
     ClearBackground(BLACK); 
     DrawText("TELA DE INTRODUCAO", (int)(((float)virtualScreenWidth-(float)MeasureText("TELA DE INTRODUCAO",30))/2.0f), (int)((float)virtualScreenHeight/2.0f-40.0f), 30,WHITE);
     DrawText("Fall Witches Engine v0.0.12",(int)(((float)virtualScreenWidth-(float)MeasureText("Fall Witches Engine v0.0.12",20))/2.0f),(int)((float)virtualScreenHeight/2.0f+10.0f),20,LIGHTGRAY); // Versão de exemplo
     DrawText("Pressione ENTER, ESC ou clique para continuar...",(int)(((float)virtualScreenWidth-(float)MeasureText("Pressione ENTER, ESC ou clique para continuar...",10))/2.0f),virtualScreenHeight-30,10,GRAY);
 }
 
-void InitializePlayerModeMenuButtons() { /* ... (código como antes) ... */
+void InitializePlayerModeMenuButtons() { 
     float btnW=250.0f, btnH=50.0f, spY=30.0f; float totalH=2.0f*btnH+spY;
     float sY=((float)virtualScreenHeight-totalH)/2.0f; float sX=((float)virtualScreenWidth-btnW)/2.0f;
     playerModeMenuButtons[0]=(MenuButton){{sX,sY,btnW,btnH},"Novo Jogo",MAROON,COLOR_BUTTON_HOVER,COLOR_BUTTON_DISABLED,COLOR_BUTTON_TEXT,true,false,BUTTON_ACTION_NEW_GAME_SETUP_SLOT};
@@ -150,7 +149,7 @@ void UpdatePlayerModeMenuScreen(GameState *currentScreen_ptr, Music playlist[], 
         if (currentScreen_ptr) Menu_RequestMainMenu(currentScreen_ptr, playlist, currentMusicIndex, isPlaying_ptr); // Passa bool*
     }
 }
-void DrawPlayerModeMenuScreen(void) { /* ... (código como antes) ... */
+void DrawPlayerModeMenuScreen(void) {
     if (!playerModeMenuButtonsInitialized) { InitializePlayerModeMenuButtons(); }
     ClearBackground(DARKGRAY);
     const char* titleText = (currentGameMode == GAME_MODE_SINGLE_PLAYER) ? "UM JOGADOR" : "DOIS JOGADORES";
@@ -165,7 +164,7 @@ void DrawPlayerModeMenuScreen(void) { /* ... (código como antes) ... */
     DrawText("ESC para Voltar ao Menu Principal", 10, virtualScreenHeight - 20, 10, LIGHTGRAY);
 }
 
-void Menu_RequestSaveLoadScreen(GameState *currentScreen_ptr, bool isSaving, GameState fromScreen) { /* ... (código como antes) ... */
+void Menu_RequestSaveLoadScreen(GameState *currentScreen_ptr, bool isSaving, GameState fromScreen) {
     s_is_in_save_mode = isSaving;
     s_save_load_context_mode = currentGameMode; 
     if (fromScreen == GAMESTATE_PLAYER_MODE_MENU && isSaving) { s_is_new_game_flow = true;}
@@ -200,7 +199,7 @@ void Menu_RequestMainMenu(GameState *currentScreen_ptr, Music playlist[], int cu
     mainMenuButtonsInitialized = false;
     s_is_new_game_flow = false;
 }
-// Getters e Setters como antes
+// Getters e Setters
 bool Menu_IsInSaveMode(void) { return s_is_in_save_mode; }
 bool Menu_IsNewGameFlow(void) { return s_is_new_game_flow; }
 int Menu_GetSaveLoadSubState(void) { return s_save_load_menu_sub_state; }

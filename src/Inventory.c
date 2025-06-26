@@ -18,7 +18,6 @@ static int music_was_playing_on_inventory_entry = 0;
 const char *tab_display_names[MAX_INVENTORY_TABS] = {"Inventario", "Equipamento", "Status"};
 
 bool AddItemToInventory(Player *player, const char *itemName, int quantity) {
-    // ... (código da função como antes, sem alterações nesta passagem) ...
     if (!player || !itemName || strlen(itemName) == 0 || quantity <= 0) return false;
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
         if (strcmp(player->inventory[i].name, itemName) == 0) {
@@ -42,7 +41,7 @@ bool AddItemToInventory(Player *player, const char *itemName, int quantity) {
 }
 
 bool RemoveItemFromInventory(Player *player, const char *itemName, int quantity) {
-    // ... (código da função como antes, sem alterações nesta passagem) ...
+    
     if (!player || !itemName || strlen(itemName) == 0 || quantity <= 0) return false;
     for (int i = 0; i < MAX_INVENTORY_SLOTS; i++) {
         if (strcmp(player->inventory[i].name, itemName) == 0) {
@@ -202,7 +201,6 @@ void DrawInventoryScreen(Player players_arr[], Player background_players_arr[], 
 }
 
 void DrawInventoryUIElements(Player players_arr[]) {
-    // ... (código da função como antes, sem alterações nesta passagem) ...
     if (!players_arr) return;
     DrawRectangle(0, 0, virtualScreenWidth, virtualScreenHeight, Fade(BLACK, 0.90f));
     int top_instruction_area_height = 35; int bottom_instruction_area_height = 35;

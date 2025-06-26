@@ -4,7 +4,7 @@
 #include "../include/Settings.h"
 #include <stddef.h> // Para NULL
 
-// ... (variáveis estáticas e InitializePauseMenuButtons como antes) ...
+// ... (variáveis estáticas e InitializePauseMenuButtons) ...
 extern const int virtualScreenWidth;
 extern const int virtualScreenHeight;
 extern GameModeType currentGameMode;
@@ -81,7 +81,7 @@ void UpdatePauseScreen(GameState *currentScreen_ptr, Player players[], Music pla
     }
  }
 
-void DrawPauseMenuElements(void) { /* ... (código como antes) ... */
+void DrawPauseMenuElements(void) { 
     if (!pauseMenuButtonsInitialized) { InitializePauseMenuButtons(); }
     DrawRectangle(0, 0, virtualScreenWidth, virtualScreenHeight, Fade(BLACK, 0.85f));
     DrawText("PAUSADO", (int)(((float)virtualScreenWidth - (float)MeasureText("PAUSADO", 50)) / 2.0f), (int)((float)virtualScreenHeight/2.0f - 120.0f), 50, GRAY);

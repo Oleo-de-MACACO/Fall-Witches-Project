@@ -1,9 +1,11 @@
-#include <stddef.h>
-#include <stdbool.h>
 #include "raylib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <time.h>
 #include <math.h>
 
-// --- Inclusão dos Headers do Projeto ---
 #include "../include/Game.h"
 #include "../include/Classes.h"
 #include "../include/Menu.h"
@@ -14,30 +16,29 @@
 #include "../include/Settings.h"
 #include "../include/WalkCycle.h"
 #include "../include/Sound.h"
-#include "../include/WorldMap.h"
 #include "../include/WorldLoading.h"
+#include "../include/WorldMap.h"
+#include "../include/Event.h"
+#include "../include/Dialogue.h"
+#include "../include/GameProgress.h"
+#include "../include/CharacterManager.h"
+#include "../include/BattleSystem.h"
+#include "../include/BattleUI.h"
+#include "../include/EnemyLoader.h"
+#include "../include/MapData.h"
+// --- CORREÇÃO: Incluído o novo header de ataques ---
+#include "../include/ClassAttacks.h"
 
-// --- Constantes Globais ---
-const int virtualScreenWidth = 800;
-const int virtualScreenHeight = 450;
-const int WORLD_MAP_MIN_X = -10;
-const int WORLD_MAP_MAX_X = 10;
-const int WORLD_MAP_MIN_Y = -10;
-const int WORLD_MAP_MAX_Y = 10;
-const int gameSectionWidthMultiplier = 3; // Usado como fallback ou para lógica legada
-const int gameSectionHeightMultiplier = 3; // Usado como fallback ou para lógica legada
 
-// --- Variáveis Globais do Jogo ---
 Player players[MAX_PLAYERS_SUPPORTED];
-Music gamePlaylist[MAX_MUSIC_PLAYLIST_SIZE]; // Legado
-
 GameState currentScreen;
 GameModeType currentGameMode = GAME_MODE_UNINITIALIZED;
-int currentActivePlayers = MAX_PLAYERS_SUPPORTED;
-int introScreenFramesCounter = 0;
-
-// --- Variáveis Globais de Volume (Definidas aqui) ---
-float masterVolume = 1.0f;          // *** NOVO: Volume Principal/Mestre ***
+int currentActivePlayers = 1;
+int g_currentMapX = 0;
+int g_currentMapY = 0;
+bool g_request_exit = false;
+static int introScreenFramesCounter = 0;
+float masterVolume = 1.0f;
 float mainMenuMusicVolume = 0.7f;
 float gameplayMusicVolume = 0.5f;
 float battleMusicVolume = 0.5f;
@@ -46,29 +47,32 @@ float ambientNatureVolume = 0.4f;
 float ambientCityVolume = 0.4f;
 float ambientCaveVolume = 0.45f;
 float sfxVolume = 0.5f;
-
-bool isMusicPlaying = true; // Flag de conveniência, Sound.c gerencia o estado real
-int currentPlaylistIndex = 0;
+Music gamePlaylist[MAX_MUSIC_PLAYLIST_SIZE];
+bool isMusicPlaying = true;
+int currentMusicIndex = 0;
 float musicPlayTimer = 0.0f;
 float currentTrackDuration = 0.0f;
-
-int g_currentMapX = 0;
-int g_currentMapY = 0;
-bool g_request_exit = false;
-
 RenderTexture2D targetRenderTexture;
-Camera2D gameCamera = {
-    .offset = {0.0f, 0.0f}, .target = {0.0f, 0.0f}, .rotation = 0.0f, .zoom = 1.0f
-};
+Camera2D gameCamera = { .offset = {0.0f, 0.0f}, .target = {0.0f, 0.0f}, .rotation = 0.0f, .zoom = 0.8f };
 WorldSection* currentActiveWorldSection = NULL;
+GameState* g_currentScreen_ptr = &currentScreen;
+Player* g_players_ptr = players;
+int* g_currentActivePlayers_ptr = &currentActivePlayers;
+const int virtualScreenWidth = 800;
+const int virtualScreenHeight = 450;
+const int WORLD_MAP_MIN_X = -10;
+const int WORLD_MAP_MAX_X = 10;
+const int WORLD_MAP_MIN_Y = -10;
+const int WORLD_MAP_MAX_Y = 10;
+const int gameSectionWidthMultiplier = 3;
+const int gameSectionHeightMultiplier = 3;
+
 
 Vector2 GetVirtualMousePosition(Vector2 actualMousePos) {
     Vector2 virtualMouse = { 0.0f, 0.0f };
     float scale = fminf((float)GetScreenWidth() / (float)virtualScreenWidth, (float)GetScreenHeight() / (float)virtualScreenHeight);
-    float scaledRenderWidth = (float)virtualScreenWidth * scale;
-    float scaledRenderHeight = (float)virtualScreenHeight * scale;
-    float letterboxX = ((float)GetScreenWidth() - scaledRenderWidth) * 0.5f;
-    float letterboxY = ((float)GetScreenHeight() - scaledRenderHeight) * 0.5f;
+    float letterboxX = ((float)GetScreenWidth() - ((float)virtualScreenWidth * scale)) * 0.5f;
+    float letterboxY = ((float)GetScreenHeight() - ((float)virtualScreenHeight * scale)) * 0.5f;
     virtualMouse.x = (actualMousePos.x - letterboxX) / scale;
     virtualMouse.y = (actualMousePos.y - letterboxY) / scale;
     return virtualMouse;
@@ -77,151 +81,157 @@ Vector2 GetVirtualMousePosition(Vector2 actualMousePos) {
 int main(void) {
     SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
     InitWindow(virtualScreenWidth, virtualScreenHeight, "Fall Witches");
-    if (!IsWindowReady()) { return 1; }
     SetExitKey(KEY_NULL);
     InitAudioDevice();
-    if(!IsAudioDeviceReady()){ TraceLog(LOG_WARNING, "Dispositivo de audio nao pode ser inicializado."); }
+    srand(time(NULL));
 
+    TraceLog(LOG_INFO, "Carregando todos os recursos do jogo...");
     InitGameResources(players, gamePlaylist);
     LoadGameAudio("assets/audio");
+    Event_LoadAll("assets/Events/events.txt");
+    Dialogue_LoadAll("assets/Dialogues/dialogues.txt");
+    // --- CORREÇÃO: Carrega os ataques do novo arquivo ---
+    ClassAttacks_LoadAll("assets/ClassAttacks.txt");
+    EnemyLoader_LoadAll("assets/Enemies.txt");
+    CharManager_Init();
 
-    UpdateCurrentlyPlayingMusicVolume(); // Aplica volumes iniciais baseados em master e categorias
-    ApplySfxVolume();                   // Aplica volume SFX inicial (baseado em master e sfxVolume)
+    UpdateCurrentlyPlayingMusicVolume();
+    ApplySfxVolume();
 
     targetRenderTexture = LoadRenderTexture(virtualScreenWidth, virtualScreenHeight);
-    if (targetRenderTexture.id == 0) {
-        TraceLog(LOG_ERROR, "Falha ao carregar render texture.");
-        if(IsAudioDeviceReady()) { CloseAudioDevice(); }
-        CloseWindow(); return 1;
-    }
     SetTextureFilter(targetRenderTexture.texture, TEXTURE_FILTER_BILINEAR);
 
-    gameCamera.offset = (Vector2){ (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f };
-    gameCamera.target = (Vector2){ (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f };
-    gameCamera.zoom = 1.0f;
+    gameCamera = (Camera2D){
+        .offset = { (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f },
+        .target = { (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f },
+        .rotation = 0.0f, .zoom = 0.8
+    };
     currentScreen = GAMESTATE_INTRO;
-    introScreenFramesCounter = 0;
-    currentActiveWorldSection = LoadWorldSection(g_currentMapX, g_currentMapY);
-    if (currentActiveWorldSection == NULL || !currentActiveWorldSection->isLoaded) {
-        TraceLog(LOG_ERROR, "Falha critica ao carregar secao inicial (0,0).");
-    }
+    Progress_Reset();
 
     if (GetMusicTrackCount(MUSIC_CATEGORY_MAINMENU) > 0) {
-        PlayMusicTrack(MUSIC_CATEGORY_MAINMENU, 0, true); // Sound.c aplicará mainMenuMusicVolume * masterVolume
+        PlayMusicTrack(MUSIC_CATEGORY_MAINMENU, 0, true);
         isMusicPlaying = true;
-    } else { isMusicPlaying = false; }
+    }
     SetTargetFPS(60);
 
     while (!WindowShouldClose() && !g_request_exit) {
         if(IsAudioDeviceReady()) UpdateAudioStreams();
-        Vector2 mousePosition = GetMousePosition();
-        Vector2 virtualMousePosition = GetVirtualMousePosition(mousePosition);
 
-        // Exemplo de input para mudar volumes (idealmente em Settings)
-        // Ajusta masterVolume como exemplo, os outros seguem o mesmo padrão em Settings.c
-        if (IsKeyPressed(KEY_PAGE_DOWN)) {
-            masterVolume -= 0.1f; if (masterVolume < 0.0f) masterVolume = 0.0f;
-            UpdateCurrentlyPlayingMusicVolume(); ApplySfxVolume();
-        }
-        if (IsKeyPressed(KEY_PAGE_UP)) {
-            masterVolume += 0.1f; if (masterVolume > 1.0f) masterVolume = 1.0f;
-            UpdateCurrentlyPlayingMusicVolume(); ApplySfxVolume();
-        }
-        // Lógica de atualização de gameplayMusicVolume e sfxVolume com +/- removida daqui,
-        // pois Settings.c será o local principal para essas mudanças.
+        *g_currentActivePlayers_ptr = currentActivePlayers;
 
-        if (currentGameMode == GAME_MODE_SINGLE_PLAYER) { currentActivePlayers = 1; }
-        else { currentActivePlayers = MAX_PLAYERS_SUPPORTED; }
+        Vector2 virtualMousePosition = GetVirtualMousePosition(GetMousePosition());
+        int previousMapX = g_currentMapX;
+        int previousMapY = g_currentMapY;
+        BorderDirection transitionDirection = BORDER_NONE;
 
-        int previousMapX = g_currentMapX; int previousMapY = g_currentMapY;
-
-        switch (currentScreen) {
-            case GAMESTATE_MENU: UpdateMenuScreen(&currentScreen, virtualMousePosition); break;
-            case GAMESTATE_INTRO: UpdateIntroScreen(&currentScreen, &introScreenFramesCounter); break;
-            case GAMESTATE_PLAYER_MODE_MENU:
-                UpdatePlayerModeMenuScreen(&currentScreen, gamePlaylist, currentPlaylistIndex, gameplayMusicVolume * masterVolume, &isMusicPlaying, virtualMousePosition);
-                break;
-            case GAMESTATE_CHARACTER_CREATION:
-                UpdateCharacterCreationScreen(&currentScreen, players, &g_currentMapX, &g_currentMapY, gamePlaylist, currentPlaylistIndex, gameplayMusicVolume * masterVolume, &isMusicPlaying);
-                break;
-            case GAMESTATE_PLAYING:
-                // Passa o ponteiro para gameplayMusicVolume (que será multiplicado por masterVolume em Sound.c)
-                UpdatePlayingScreen(&currentScreen, players, currentActivePlayers,
-                                     gamePlaylist, &currentPlaylistIndex,
-                                     &gameplayMusicVolume, 
-                                     &isMusicPlaying,
-                                     &musicPlayTimer, &currentTrackDuration,
-                                     &g_currentMapX, &g_currentMapY, &gameCamera, currentActiveWorldSection);
-                break;
-            case GAMESTATE_PAUSE:
-                UpdatePauseScreen(&currentScreen, players, gamePlaylist, currentPlaylistIndex, isMusicPlaying, &isMusicPlaying, virtualMousePosition);
-                break;
-            case GAMESTATE_INVENTORY:
-                UpdateInventoryScreen(&currentScreen, players, &isMusicPlaying, gamePlaylist, &currentPlaylistIndex);
-                break;
-            case GAMESTATE_SAVE_LOAD_MENU:
-                UpdateSaveLoadMenuScreen(&currentScreen, players, gamePlaylist, currentPlaylistIndex, gameplayMusicVolume * masterVolume,
-                                         &isMusicPlaying, &g_currentMapX, &g_currentMapY, virtualMousePosition,
-                                         &currentActiveWorldSection);
-                break;
-            case GAMESTATE_SETTINGS: UpdateSettingsScreen(&currentScreen); break; // Settings irá ler e modificar os volumes globais
-            default: break;
-        }
-        if (currentScreen == GAMESTATE_PLAYING && (g_currentMapX != previousMapX || g_currentMapY != previousMapY)) {
+        if (currentScreen == GAMESTATE_PLAYING && Menu_IsNewGameFlow()) {
+            Progress_Reset();
+            g_currentMapX = 0; g_currentMapY = 0;
             if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); }
             currentActiveWorldSection = LoadWorldSection(g_currentMapX, g_currentMapY);
-            if (!currentActiveWorldSection || !currentActiveWorldSection->isLoaded) { /* Tratar erro */ }
-        }
-        BeginTextureMode(targetRenderTexture);
-            ClearBackground(RAYWHITE);
-            if (currentScreen == GAMESTATE_PLAYING) {
-                BeginMode2D(gameCamera);
-                    if (currentActiveWorldSection) { DrawWorldSectionBackground(currentActiveWorldSection); }
-                    else { ClearBackground(DARKGRAY); DrawText("ERRO: SECAO NAO CARREGADA",10,10,20,RED); }
-                    DrawPlayingScreen(players, currentActivePlayers, gameplayMusicVolume * masterVolume, currentPlaylistIndex, isMusicPlaying, g_currentMapX, g_currentMapY);
-                EndMode2D();
-                DrawFPS(10, virtualScreenHeight - 20); 
-            } else if (currentScreen == GAMESTATE_PAUSE) {
-                BeginMode2D(gameCamera);
-                    if (currentActiveWorldSection) DrawWorldSectionBackground(currentActiveWorldSection); else ClearBackground(DARKGRAY);
-                    DrawPlayingScreen(players, currentActivePlayers, gameplayMusicVolume * masterVolume, currentPlaylistIndex, isMusicPlaying, g_currentMapX, g_currentMapY);
-                EndMode2D();
-                DrawPauseMenuElements();
-            } else if (currentScreen == GAMESTATE_INVENTORY) {
-                BeginMode2D(gameCamera);
-                     if (currentActiveWorldSection) DrawWorldSectionBackground(currentActiveWorldSection); else ClearBackground(DARKGRAY);
-                    DrawInventoryScreen(players, players, gameplayMusicVolume * masterVolume, currentPlaylistIndex, isMusicPlaying, g_currentMapX, g_currentMapY);
-                EndMode2D();
-                DrawInventoryUIElements(players);
-            } else if (currentScreen == GAMESTATE_SETTINGS) {
-                DrawSettingsScreen();
-            } else { 
-                switch (currentScreen) {
-                    case GAMESTATE_MENU: DrawMenuScreen(); break;
-                    case GAMESTATE_INTRO: DrawIntroScreen(); break;
-                    case GAMESTATE_PLAYER_MODE_MENU: DrawPlayerModeMenuScreen(); break;
-                    case GAMESTATE_CHARACTER_CREATION: DrawCharacterCreationScreen(players); break;
-                    case GAMESTATE_SAVE_LOAD_MENU: DrawSaveLoadMenuScreen(players, gamePlaylist, currentPlaylistIndex, isMusicPlaying, gameplayMusicVolume * masterVolume, g_currentMapX, g_currentMapY); break;
-                    default: DrawText("ESTADO DESCONHECIDO!", (int)(((float)virtualScreenWidth - (float)MeasureText("ESTADO DESCONHECIDO!", 20)) / 2.0f), (int)(((float)virtualScreenHeight - 20.0f) / 2.0f - 10.0f), 20, RED); break;
-                }
+            MapData_LoadForMap(g_currentMapX, g_currentMapY);
+            if (!currentActiveWorldSection) {
+                TraceLog(LOG_FATAL, "NÃO FOI POSSÍVEL CARREGAR O MAPA INICIAL (0,0)!");
+                g_request_exit = true;
+            } else {
+                PrepareNewGameSession(players, &g_currentMapX, &g_currentMapY, currentActivePlayers, currentActiveWorldSection);
+                CharManager_LoadNpcsForMap();
+                CharManager_CacheSpritesForMap();
             }
-        EndTextureMode();
+            Menu_SetIsNewGameFlow(false);
+            previousMapX = g_currentMapX; previousMapY = g_currentMapY;
+        }
+
+        if (currentScreen == GAMESTATE_BATTLE) {
+            if(!BattleSystem_IsActive() && currentScreen == GAMESTATE_BATTLE) {
+                 currentScreen = GAMESTATE_PLAYING;
+            } else {
+                BattleSystem_Update();
+                BattleUI_Update();
+            }
+        } else if (Dialogue_IsActive()) {
+            Dialogue_Update();
+        } else {
+            switch (currentScreen) {
+                case GAMESTATE_INTRO: UpdateIntroScreen(&currentScreen, &introScreenFramesCounter); break;
+                case GAMESTATE_MENU: UpdateMenuScreen(&currentScreen, virtualMousePosition); break;
+                case GAMESTATE_PLAYER_MODE_MENU: UpdatePlayerModeMenuScreen(&currentScreen, gamePlaylist, currentMusicIndex, gameplayMusicVolume * masterVolume, &isMusicPlaying, virtualMousePosition); break;
+                case GAMESTATE_CHARACTER_CREATION: UpdateCharacterCreationScreen(&currentScreen, players, &g_currentMapX, &g_currentMapY, gamePlaylist, currentMusicIndex, gameplayMusicVolume * masterVolume, &isMusicPlaying); break;
+                case GAMESTATE_SAVE_LOAD_MENU: UpdateSaveLoadMenuScreen(&currentScreen, players, gamePlaylist, currentMusicIndex, gameplayMusicVolume * masterVolume, &isMusicPlaying, &g_currentMapX, &g_currentMapY, virtualMousePosition, &currentActiveWorldSection); break;
+                case GAMESTATE_SETTINGS: UpdateSettingsScreen(&currentScreen); break;
+                case GAMESTATE_PAUSE: UpdatePauseScreen(&currentScreen, players, gamePlaylist, currentMusicIndex, isMusicPlaying, &isMusicPlaying, virtualMousePosition); break;
+                case GAMESTATE_INVENTORY: UpdateInventoryScreen(&currentScreen, players, &isMusicPlaying, gamePlaylist, &currentMusicIndex); break;
+                case GAMESTATE_PLAYING:
+                    transitionDirection = UpdatePlayingScreen(&currentScreen, players, currentActivePlayers, gamePlaylist, &currentMusicIndex, &gameplayMusicVolume, &isMusicPlaying, &musicPlayTimer, &currentTrackDuration, &g_currentMapX, &g_currentMapY, &gameCamera, currentActiveWorldSection);
+                    CharManager_Update(&players[0], currentActiveWorldSection);
+                    CharManager_CheckInteraction(&players[0]);
+                    Event_CheckAndRun(g_currentMapX, g_currentMapY);
+                    break;
+                default: break;
+            }
+        }
+
+        if (g_currentMapX != previousMapX || g_currentMapY != previousMapY) {
+            if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); }
+            CharManager_UnloadAll();
+            currentActiveWorldSection = LoadWorldSection(g_currentMapX, g_currentMapY);
+            MapData_LoadForMap(g_currentMapX, g_currentMapY);
+            if(currentActiveWorldSection) {
+                RepositionPlayersForTransition(players, currentActivePlayers, transitionDirection, currentActiveWorldSection);
+                CharManager_LoadNpcsForMap();
+                CharManager_CacheSpritesForMap();
+                CharManager_TryInitialSpawn(currentActiveWorldSection);
+            }
+        }
+
         BeginDrawing();
             ClearBackground(BLACK);
-            float scale = fminf((float)GetScreenWidth()/(float)virtualScreenWidth, (float)GetScreenHeight()/(float)virtualScreenHeight);
-            float dW = (float)virtualScreenWidth * scale; float dH = (float)virtualScreenHeight * scale;
-            float dX = ((float)GetScreenWidth() - dW) * 0.5f; float dY = ((float)GetScreenHeight() - dH) * 0.5f;
-            DrawTexturePro(targetRenderTexture.texture,
-                           (Rectangle){0.0f,0.0f,(float)targetRenderTexture.texture.width, (float)-targetRenderTexture.texture.height},
-                           (Rectangle){dX,dY,dW,dH}, (Vector2){0.0f,0.0f}, 0.0f, WHITE);
-        EndDrawing();
-    } // Fim do loop principal
+            BeginTextureMode(targetRenderTexture);
+                if (currentScreen == GAMESTATE_BATTLE) {
+                    BattleUI_Draw();
+                } else if (currentScreen == GAMESTATE_PLAYING || currentScreen == GAMESTATE_PAUSE || currentScreen == GAMESTATE_INVENTORY) {
+                    BeginMode2D(gameCamera);
+                        if (currentActiveWorldSection) DrawWorldSectionBackground(currentActiveWorldSection);
+                        else { ClearBackground(PURPLE); DrawText("ERRO: SECAO NAO CARREGADA", 10,10,20,WHITE); }
+                        CharManager_Draw();
+                        DrawPlayingScreen(players, currentActivePlayers, gameplayMusicVolume * masterVolume, currentMusicIndex, isMusicPlaying, g_currentMapX, g_currentMapY);
+                    EndMode2D();
+                    if(currentScreen == GAMESTATE_PAUSE) DrawPauseMenuElements();
+                    if(currentScreen == GAMESTATE_INVENTORY) DrawInventoryUIElements(players);
+                } else {
+                    switch (currentScreen) {
+                        case GAMESTATE_MENU: DrawMenuScreen(); break;
+                        case GAMESTATE_INTRO: DrawIntroScreen(); break;
+                        case GAMESTATE_PLAYER_MODE_MENU: DrawPlayerModeMenuScreen(); break;
+                        case GAMESTATE_CHARACTER_CREATION: DrawCharacterCreationScreen(players); break;
+                        case GAMESTATE_SAVE_LOAD_MENU: DrawSaveLoadMenuScreen(players, gamePlaylist, currentMusicIndex, isMusicPlaying, gameplayMusicVolume * masterVolume, g_currentMapX, g_currentMapY); break;
+                        case GAMESTATE_SETTINGS: DrawSettingsScreen(); break;
+                        default: DrawText("ESTADO DESCONHECIDO", 190, 200, 20, LIGHTGRAY); break;
+                    }
+                }
+            EndTextureMode();
 
-    if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); currentActiveWorldSection = NULL; }
+            float scale = fminf((float)GetScreenWidth()/(float)virtualScreenWidth, (float)GetScreenHeight()/(float)virtualScreenHeight);
+            Rectangle sourceRect = { 0.0f, 0.0f, (float)targetRenderTexture.texture.width, -(float)targetRenderTexture.texture.height };
+            Rectangle destRect = { ((float)GetScreenWidth() - ((float)virtualScreenWidth * scale)) * 0.5f, ((float)GetScreenHeight() - ((float)virtualScreenHeight * scale)) * 0.5f, (float)virtualScreenWidth * scale, (float)virtualScreenHeight * scale };
+            DrawTexturePro(targetRenderTexture.texture, sourceRect, destRect, (Vector2){0,0}, 0.0f, WHITE);
+
+            Dialogue_Draw();
+            DrawFPS(10, 10);
+        EndDrawing();
+    }
+
+    if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); }
+    CharManager_UnloadAll();
+    Dialogue_UnloadAll();
+    Event_UnloadAll();
+    // --- CORREÇÃO: Libera os recursos dos ataques ---
+    ClassAttacks_UnloadAll();
+    EnemyLoader_UnloadAll();
     UnloadGameAudio();
     UnloadRenderTexture(targetRenderTexture);
     for (int i=0; i<MAX_PLAYERS_SUPPORTED; i++) { UnloadCharacterAnimations(&players[i]); }
-    for (int i=0; i<MAX_MUSIC_PLAYLIST_SIZE; i++) { if(gamePlaylist[i].stream.buffer != NULL) UnloadMusicStream(gamePlaylist[i]); }
     if(IsAudioDeviceReady()) CloseAudioDevice();
     CloseWindow();
     return 0;

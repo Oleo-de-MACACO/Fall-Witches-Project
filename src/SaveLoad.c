@@ -1,15 +1,16 @@
 #include "../include/SaveLoad.h"
 #include "../include/Classes.h"
 #include "../include/WalkCycle.h"
+#include "../include/GameProgress.h" // *** ADICIONADO PARA ACESSAR g_gameProgress ***
 #include <stdio.h>
 #include <string.h>
 #include "raylib.h"
 #include <stddef.h>
 #include <errno.h>
 
-const unsigned int SAVEGAME_FILE_VERSION = 7;
+// *** INCREMENTA A VERSÃO DO SAVE PARA INVALIDAR SAVES ANTIGOS ***
+const unsigned int SAVEGAME_FILE_VERSION = 8; // Era 7
 
-// ... (Macros FWRITE_CHECK, FREAD_CHECK como antes) ...
 #define FWRITE_CHECK(ptr, size, count, stream, file_ptr_for_close, error_message_prefix, filename_param) \
     items_written = fwrite(ptr, size, count, stream); \
     if (items_written != count) { \
@@ -17,68 +18,32 @@ const unsigned int SAVEGAME_FILE_VERSION = 7;
         if(file_ptr_for_close) { fclose(file_ptr_for_close); } \
         return false; \
     }
-
 #define FREAD_CHECK(ptr, size, count, stream, file_ptr_for_close, error_message_prefix, filename_param) \
     items_read = fread(ptr, size, count, stream); \
     if (items_read != count) { \
-        if (feof(stream)) { \
-            TraceLog(LOG_ERROR, "[LoadGame] Fim de arquivo inesperado ao %s de '%s'. Lido: %zu, Esperado: %zu", error_message_prefix, filename_param, items_read, (size_t)count); \
-        } else if (ferror(stream)) { \
-            TraceLog(LOG_ERROR, "[LoadGame] Erro de I/O ao %s de '%s'. Erro: %s", error_message_prefix, filename_param, strerror(errno)); \
-        } else { \
-            TraceLog(LOG_ERROR, "[LoadGame] Erro ao %s de '%s'. Lido: %zu, Esperado: %zu", error_message_prefix, filename_param, items_read, (size_t)count); \
-        } \
-        if(file_ptr_for_close) { fclose(file_ptr_for_close); } \
-        return false; \
+        if (feof(stream)) { TraceLog(LOG_ERROR, "[LoadGame] Fim de arquivo inesperado ao %s de '%s'.", error_message_prefix, filename_param); } \
+        else if (ferror(stream)) { TraceLog(LOG_ERROR, "[LoadGame] Erro de I/O ao %s de '%s'. Erro: %s", error_message_prefix, filename_param, strerror(errno)); } \
+        else { TraceLog(LOG_ERROR, "[LoadGame] Erro ao %s de '%s'. Lido: %zu, Esperado: %zu", error_message_prefix, filename_param, items_read, (size_t)count); } \
+        if(file_ptr_for_close) { fclose(file_ptr_for_close); } return false; \
     }
-
-static const char* GetModeSubdirectoryFullPathInternal(GameModeType gameMode, char* path_buffer, size_t buffer_size) {
-    // ... (código como antes) ...
-    if (!path_buffer || buffer_size == 0) return NULL;
-    const char* subdir_name = NULL;
-    if (gameMode == GAME_MODE_SINGLE_PLAYER) { subdir_name = SAVE_SUBDIR_SINGLEPLAYER; }
-    else if (gameMode == GAME_MODE_TWO_PLAYER) { subdir_name = SAVE_SUBDIR_TWOPLAYER; }
-    else { TraceLog(LOG_ERROR, "[SaveLoad] Modo de jogo desconhecido (%d).", gameMode); if (buffer_size > 0) path_buffer[0] = '\0'; return NULL; }
+static const char* GetModeSubdirectoryFullPathInternal(GameModeType gameMode, char* path_buffer, size_t buffer_size) { /* ... */
+    if (!path_buffer || buffer_size == 0) return NULL; const char* subdir_name = (gameMode == GAME_MODE_SINGLE_PLAYER) ? SAVE_SUBDIR_SINGLEPLAYER : SAVE_SUBDIR_TWOPLAYER;
     int written = snprintf(path_buffer, buffer_size, "%s/%s", SAVE_BASE_DIRECTORY, subdir_name);
-    if (written < 0 || (size_t)written >= buffer_size) { if (buffer_size > 0) path_buffer[0] = '\0'; return NULL; }
-    return path_buffer;
+    if (written < 0 || (size_t)written >= buffer_size) { if (buffer_size > 0) path_buffer[0] = '\0'; return NULL; } return path_buffer;
 }
-
-bool EnsureSavesDirectoryExists(GameModeType gameMode) {
-    // ... (código como antes) ...
-    if (!DirectoryExists(SAVE_BASE_DIRECTORY)) {
-        TraceLog(LOG_WARNING, "Diretorio base de saves '%s' NAO existe. Crie manualmente.", SAVE_BASE_DIRECTORY);
-        return false;
-    }
-    char modeSavePath[128];
-    if (GetModeSubdirectoryFullPathInternal(gameMode, modeSavePath, sizeof(modeSavePath)) == NULL) { return false; }
-    if (!DirectoryExists(modeSavePath)) {
-        TraceLog(LOG_WARNING, "Diretorio de saves para o modo '%s' ('%s') NAO existe. Crie manualmente.",
-            (gameMode == GAME_MODE_SINGLE_PLAYER ? SAVE_SUBDIR_SINGLEPLAYER : SAVE_SUBDIR_TWOPLAYER), modeSavePath);
-        return false;
-    }
+bool EnsureSavesDirectoryExists(GameModeType gameMode) { /* ... */
+    if (!DirectoryExists(SAVE_BASE_DIRECTORY)) { TraceLog(LOG_WARNING, "Diretorio base '%s' NAO existe. Crie manualmente.", SAVE_BASE_DIRECTORY); return false; }
+    char modeSavePath[128]; if (GetModeSubdirectoryFullPathInternal(gameMode, modeSavePath, sizeof(modeSavePath)) == NULL) { return false; }
+    if (!DirectoryExists(modeSavePath)) { TraceLog(LOG_WARNING, "Diretorio de saves para modo '%s' ('%s') NAO existe. Crie manualmente.", (gameMode == GAME_MODE_SINGLE_PLAYER ? SAVE_SUBDIR_SINGLEPLAYER : SAVE_SUBDIR_TWOPLAYER), modeSavePath); return false; }
     return true;
 }
-
-void GetSaveFileName(char *buffer, int buffer_size, int slot_number, GameModeType gameMode) {
-    if (!buffer || buffer_size == 0) return;
-
-    char modePath[128];
-    if (GetModeSubdirectoryFullPathInternal(gameMode, modePath, sizeof(modePath)) == NULL) {
-        // *** CORRIGIDO: Adicionadas chaves para clareza do if interno ***
-        if (buffer_size > 0) {
-            buffer[0] = '\0';
-        }
-        return; // Este return é para o if externo (GetModeSubdirectoryFullPathInternal == NULL)
-    }
-    snprintf(buffer, buffer_size, "%s/Save%d.sav", modePath, slot_number + 1);
+void GetSaveFileName(char *buffer, int buffer_size, int slot_number, GameModeType gameMode) { /* ... */
+    if (!buffer || buffer_size == 0) return; char modePath[128];
+    if (GetModeSubdirectoryFullPathInternal(gameMode, modePath, sizeof(modePath)) == NULL) { if (buffer_size > 0) { buffer[0] = '\0'; } return; }
+    snprintf(buffer, (unsigned)buffer_size, "%s/Save%d.sav", modePath, slot_number + 1);
 }
-
-bool DoesSaveSlotExist(int slot_number, GameModeType gameMode) {
-    char filename[256];
-    GetSaveFileName(filename, sizeof(filename), slot_number, gameMode);
-    if (filename[0] == '\0') return false;
-    return FileExists(filename);
+bool DoesSaveSlotExist(int slot_number, GameModeType gameMode) { /* ... */
+    char filename[256]; GetSaveFileName(filename, sizeof(filename), slot_number, gameMode); if (filename[0] == '\0') return false; return FileExists(filename);
 }
 
 bool SaveGame(Player players[], int num_players_to_save, int slot_number, int currentMapX, int currentMapY, GameModeType gameMode) {
@@ -88,11 +53,17 @@ bool SaveGame(Player players[], int num_players_to_save, int slot_number, int cu
     if (filename[0] == '\0') { return false; }
     saveFile = fopen(filename, "wb");
     if (saveFile == NULL) { TraceLog(LOG_ERROR, "Falha ao abrir '%s': %s", filename, strerror(errno)); return false; }
+
     FWRITE_CHECK(&SAVEGAME_FILE_VERSION, sizeof(unsigned int), 1, saveFile, saveFile, "versao", filename);
     FWRITE_CHECK(&currentMapX, sizeof(int), 1, saveFile, saveFile, "mapX", filename);
     FWRITE_CHECK(&currentMapY, sizeof(int), 1, saveFile, saveFile, "mapY", filename);
     FWRITE_CHECK(&num_players_to_save, sizeof(int), 1, saveFile, saveFile, "num_players", filename);
+
+    // Salva os dados de progresso do jogo (ex: mapas visitados)
+    FWRITE_CHECK(&g_gameProgress, sizeof(GameProgress), 1, saveFile, saveFile, "progresso do jogo", filename);
+
     for (int i = 0; i < num_players_to_save; i++) {
+        // ... (todos os FWRITE_CHECK para os dados do jogador)
         FWRITE_CHECK(players[i].nome, sizeof(char), MAX_PLAYER_NAME_LENGTH, saveFile, saveFile, "nome", filename);
         FWRITE_CHECK(&players[i].classe, sizeof(Classe), 1, saveFile, saveFile, "classe", filename);
         FWRITE_CHECK(&players[i].spriteType, sizeof(SpriteType), 1, saveFile, saveFile, "spriteType", filename);
@@ -121,6 +92,7 @@ bool SaveGame(Player players[], int num_players_to_save, int slot_number, int cu
         for (int j = 0; j < MAX_INVENTORY_SLOTS; j++) { FWRITE_CHECK(&players[i].inventory[j], sizeof(InventoryItem), 1, saveFile, saveFile, "inventario_item", filename); }
         FWRITE_CHECK(&players[i].inventory_item_count, sizeof(int), 1, saveFile, saveFile, "contagem_inventario", filename);
         for (int j = 0; j < MAX_EQUIP_SLOTS; j++) { FWRITE_CHECK(&players[i].equipped_items[j], sizeof(InventoryItem), 1, saveFile, saveFile, "equipamento_item", filename); }
+
     }
     fclose(saveFile);
     TraceLog(LOG_INFO, "[SaveGame] Jogo salvo: '%s'", filename);
@@ -129,71 +101,50 @@ bool SaveGame(Player players[], int num_players_to_save, int slot_number, int cu
 
 bool LoadGame(Player players[], int max_players_in_game, int slot_number, int *loadedMapX, int *loadedMapY, GameModeType gameMode, int *numPlayersLoaded) {
     char filename[256]; FILE *loadFile = NULL; size_t items_read;
-    unsigned int file_version = 0; int num_players_saved_in_file = 0; int i, j;
+    unsigned int file_version = 0; int num_players_saved_in_file = 0;
     GetSaveFileName(filename, sizeof(filename), slot_number, gameMode);
     if (filename[0] == '\0' || !FileExists(filename)) { return false; }
     loadFile = fopen(filename, "rb");
-    if (loadFile == NULL) { TraceLog(LOG_ERROR, "Falha ao abrir '%s': %s", filename, strerror(errno)); return false; }
+    if (loadFile == NULL) { return false; }
 
     FREAD_CHECK(&file_version, sizeof(unsigned int), 1, loadFile, loadFile, "versao", filename);
-    if (file_version != SAVEGAME_FILE_VERSION) { TraceLog(LOG_ERROR, "Versao incompativel: %u vs %u", file_version, SAVEGAME_FILE_VERSION); if(loadFile){fclose(loadFile);} return false; }
+    if (file_version != SAVEGAME_FILE_VERSION) {
+        TraceLog(LOG_ERROR, "Versao do save incompativel: %u (esperado: %u)", file_version, SAVEGAME_FILE_VERSION);
+        fclose(loadFile); return false;
+    }
     FREAD_CHECK(loadedMapX, sizeof(int), 1, loadFile, loadFile, "mapX", filename);
     FREAD_CHECK(loadedMapY, sizeof(int), 1, loadFile, loadFile, "mapY", filename);
     FREAD_CHECK(&num_players_saved_in_file, sizeof(int), 1, loadFile, loadFile, "num_players_saved", filename);
-    if (num_players_saved_in_file<=0||num_players_saved_in_file>MAX_PLAYERS_SUPPORTED){TraceLog(LOG_ERROR,"Num jogadores invalido (%d) em '%s'.", num_players_saved_in_file,filename);if(loadFile){fclose(loadFile);}return false;}
+
+    // Carrega os dados de progresso do jogo
+    FREAD_CHECK(&g_gameProgress, sizeof(GameProgress), 1, loadFile, loadFile, "progresso do jogo", filename);
+
+    if (num_players_saved_in_file <= 0 || num_players_saved_in_file > MAX_PLAYERS_SUPPORTED) { /* ... erro ... */ fclose(loadFile); return false; }
     if(numPlayersLoaded) *numPlayersLoaded = num_players_saved_in_file;
-    if (gameMode==GAME_MODE_SINGLE_PLAYER && num_players_saved_in_file!=1){TraceLog(LOG_ERROR,"Save de %dP invalido para modo 1P.",num_players_saved_in_file);if(loadFile){fclose(loadFile);}return false;}
+    if (gameMode == GAME_MODE_SINGLE_PLAYER && num_players_saved_in_file != 1) { /* ... erro ... */ fclose(loadFile); return false; }
 
-    for (i = 0; i < num_players_saved_in_file; i++) {
-        if (i >= max_players_in_game) { TraceLog(LOG_ERROR, "Contagem de jogadores incompativel em '%s'.", filename); if(loadFile){fclose(loadFile);} return false;}
-        memset(&players[i], 0, sizeof(Player)); 
-        FREAD_CHECK(players[i].nome,sizeof(char),MAX_PLAYER_NAME_LENGTH,loadFile,loadFile,"nome jogador",filename); players[i].nome[MAX_PLAYER_NAME_LENGTH-1]='\0';
-        FREAD_CHECK(&players[i].classe,sizeof(Classe),1,loadFile,loadFile,"classe",filename);
-        FREAD_CHECK(&players[i].spriteType,sizeof(SpriteType),1,loadFile,loadFile,"spriteType",filename);
-        FREAD_CHECK(&players[i].nivel,sizeof(int),1,loadFile,loadFile,"nivel",filename);
-        FREAD_CHECK(&players[i].exp,sizeof(int),1,loadFile,loadFile,"exp",filename);
-        FREAD_CHECK(&players[i].vida,sizeof(int),1,loadFile,loadFile,"vida",filename);
-        FREAD_CHECK(&players[i].max_vida,sizeof(int),1,loadFile,loadFile,"max_vida",filename);
-        FREAD_CHECK(&players[i].mana,sizeof(int),1,loadFile,loadFile,"mana",filename);
-        FREAD_CHECK(&players[i].max_mana,sizeof(int),1,loadFile,loadFile,"max_mana",filename);
-        FREAD_CHECK(&players[i].stamina,sizeof(int),1,loadFile,loadFile,"stamina",filename);
-        FREAD_CHECK(&players[i].max_stamina,sizeof(int),1,loadFile,loadFile,"max_stamina",filename);
-        FREAD_CHECK(&players[i].magic_attack,sizeof(int),1,loadFile,loadFile,"magic_attack",filename);
-        FREAD_CHECK(&players[i].magic_defense,sizeof(int),1,loadFile,loadFile,"magic_defense",filename);
-        FREAD_CHECK(&players[i].ataque,sizeof(int),1,loadFile,loadFile,"ataque",filename);
-        FREAD_CHECK(&players[i].defesa,sizeof(int),1,loadFile,loadFile,"defesa",filename);
-        FREAD_CHECK(&players[i].forca,sizeof(int),1,loadFile,loadFile,"forca",filename);
-        FREAD_CHECK(&players[i].percepcao,sizeof(int),1,loadFile,loadFile,"percepcao",filename);
-        FREAD_CHECK(&players[i].resistencia,sizeof(int),1,loadFile,loadFile,"resistencia",filename);
-        FREAD_CHECK(&players[i].carisma,sizeof(int),1,loadFile,loadFile,"carisma",filename);
-        FREAD_CHECK(&players[i].inteligencia,sizeof(int),1,loadFile,loadFile,"inteligencia",filename);
-        FREAD_CHECK(&players[i].agilidade,sizeof(int),1,loadFile,loadFile,"agilidade",filename);
-        FREAD_CHECK(&players[i].sorte,sizeof(int),1,loadFile,loadFile,"sorte",filename);
-        FREAD_CHECK(&players[i].moedas,sizeof(int),1,loadFile,loadFile,"moedas",filename);
-        FREAD_CHECK(&players[i].posx,sizeof(int),1,loadFile,loadFile,"posx",filename);
-        FREAD_CHECK(&players[i].posy,sizeof(int),1,loadFile,loadFile,"posy",filename);
-        for(j=0;j<MAX_INVENTORY_SLOTS;j++){FREAD_CHECK(&players[i].inventory[j],sizeof(InventoryItem),1,loadFile,loadFile,"inventario_item",filename);}
+    for (int i = 0; i < num_players_saved_in_file; i++) {
+        if (i >= max_players_in_game) { /* ... erro ... */ fclose(loadFile); return false; }
+        memset(&players[i], 0, sizeof(Player));
+        // ... (todos os FREAD_CHECK para os dados do jogador) ...
+        FREAD_CHECK(players[i].nome,sizeof(char),MAX_PLAYER_NAME_LENGTH,loadFile,loadFile,"nome",filename); players[i].nome[MAX_PLAYER_NAME_LENGTH-1]='\0';
+        FREAD_CHECK(&players[i].classe,sizeof(Classe),1,loadFile,loadFile,"classe",filename); FREAD_CHECK(&players[i].spriteType,sizeof(SpriteType),1,loadFile,loadFile,"spriteType",filename);
+        FREAD_CHECK(&players[i].nivel,sizeof(int),1,loadFile,loadFile,"nivel",filename); FREAD_CHECK(&players[i].exp,sizeof(int),1,loadFile,loadFile,"exp",filename);
+        FREAD_CHECK(&players[i].vida,sizeof(int),1,loadFile,loadFile,"vida",filename); FREAD_CHECK(&players[i].max_vida,sizeof(int),1,loadFile,loadFile,"max_vida",filename);
+        FREAD_CHECK(&players[i].mana,sizeof(int),1,loadFile,loadFile,"mana",filename); FREAD_CHECK(&players[i].max_mana,sizeof(int),1,loadFile,loadFile,"max_mana",filename);
+        FREAD_CHECK(&players[i].stamina,sizeof(int),1,loadFile,loadFile,"stamina",filename); FREAD_CHECK(&players[i].max_stamina,sizeof(int),1,loadFile,loadFile,"max_stamina",filename);
+        FREAD_CHECK(&players[i].magic_attack,sizeof(int),1,loadFile,loadFile,"magic_attack",filename); FREAD_CHECK(&players[i].magic_defense,sizeof(int),1,loadFile,loadFile,"magic_defense",filename);
+        FREAD_CHECK(&players[i].ataque,sizeof(int),1,loadFile,loadFile,"ataque",filename); FREAD_CHECK(&players[i].defesa,sizeof(int),1,loadFile,loadFile,"defesa",filename);
+        FREAD_CHECK(&players[i].forca,sizeof(int),1,loadFile,loadFile,"forca",filename); FREAD_CHECK(&players[i].percepcao,sizeof(int),1,loadFile,loadFile,"percepcao",filename);
+        FREAD_CHECK(&players[i].resistencia,sizeof(int),1,loadFile,loadFile,"resistencia",filename); FREAD_CHECK(&players[i].carisma,sizeof(int),1,loadFile,loadFile,"carisma",filename);
+        FREAD_CHECK(&players[i].inteligencia,sizeof(int),1,loadFile,loadFile,"inteligencia",filename); FREAD_CHECK(&players[i].agilidade,sizeof(int),1,loadFile,loadFile,"agilidade",filename);
+        FREAD_CHECK(&players[i].sorte,sizeof(int),1,loadFile,loadFile,"sorte",filename); FREAD_CHECK(&players[i].moedas,sizeof(int),1,loadFile,loadFile,"moedas",filename);
+        FREAD_CHECK(&players[i].posx,sizeof(int),1,loadFile,loadFile,"posx",filename); FREAD_CHECK(&players[i].posy,sizeof(int),1,loadFile,loadFile,"posy",filename);
+        for(int j=0;j<MAX_INVENTORY_SLOTS;j++){FREAD_CHECK(&players[i].inventory[j],sizeof(InventoryItem),1,loadFile,loadFile,"inventario_item",filename);}
         FREAD_CHECK(&players[i].inventory_item_count,sizeof(int),1,loadFile,loadFile,"contagem_inventario",filename);
-        for(j=0;j<MAX_EQUIP_SLOTS;j++){FREAD_CHECK(&players[i].equipped_items[j],sizeof(InventoryItem),1,loadFile,loadFile,"equipamento_item",filename);}
+        for(int j=0;j<MAX_EQUIP_SLOTS;j++){FREAD_CHECK(&players[i].equipped_items[j],sizeof(InventoryItem),1,loadFile,loadFile,"equipamento_item",filename);}
 
-        // *** CORREÇÃO DE INDENTAÇÃO ***
-        if (players[i].vida > players[i].max_vida) {
-            players[i].vida = players[i].max_vida;
-        }
-        if (players[i].mana > players[i].max_mana) { // Este if é separado
-            players[i].mana = players[i].max_mana;
-        }
-        if (players[i].stamina > players[i].max_stamina) { // E este também
-            players[i].stamina = players[i].max_stamina;
-        }
-        
-        // As dimensões serão definidas por LoadCharacterAnimations
-        LoadCharacterAnimations(&players[i]); 
-        players[i].currentAnimFrame = 0;
-        players[i].frameTimer = 0.0f;
-        players[i].frameDuration = 0.15f; 
-        players[i].facingDir = DIR_DOWN;  
-        players[i].isMoving = false;
+        LoadCharacterAnimations(&players[i]); // Define width/height da textura
     }
     fclose(loadFile);
     TraceLog(LOG_INFO,"[LoadGame] Jogo carregado de '%s'",filename);
