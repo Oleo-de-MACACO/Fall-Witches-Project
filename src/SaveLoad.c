@@ -63,7 +63,7 @@ bool SaveGame(Player players[], int num_players_to_save, int slot_number, int cu
     FWRITE_CHECK(&g_gameProgress, sizeof(GameProgress), 1, saveFile, saveFile, "progresso do jogo", filename);
 
     for (int i = 0; i < num_players_to_save; i++) {
-        // ... (todos os FWRITE_CHECK para os dados do jogador como antes)
+        // ... (todos os FWRITE_CHECK para os dados do jogador)
         FWRITE_CHECK(players[i].nome, sizeof(char), MAX_PLAYER_NAME_LENGTH, saveFile, saveFile, "nome", filename);
         FWRITE_CHECK(&players[i].classe, sizeof(Classe), 1, saveFile, saveFile, "classe", filename);
         FWRITE_CHECK(&players[i].spriteType, sizeof(SpriteType), 1, saveFile, saveFile, "spriteType", filename);
@@ -126,7 +126,7 @@ bool LoadGame(Player players[], int max_players_in_game, int slot_number, int *l
     for (int i = 0; i < num_players_saved_in_file; i++) {
         if (i >= max_players_in_game) { /* ... erro ... */ fclose(loadFile); return false; }
         memset(&players[i], 0, sizeof(Player));
-        // ... (todos os FREAD_CHECK para os dados do jogador como antes) ...
+        // ... (todos os FREAD_CHECK para os dados do jogador) ...
         FREAD_CHECK(players[i].nome,sizeof(char),MAX_PLAYER_NAME_LENGTH,loadFile,loadFile,"nome",filename); players[i].nome[MAX_PLAYER_NAME_LENGTH-1]='\0';
         FREAD_CHECK(&players[i].classe,sizeof(Classe),1,loadFile,loadFile,"classe",filename); FREAD_CHECK(&players[i].spriteType,sizeof(SpriteType),1,loadFile,loadFile,"spriteType",filename);
         FREAD_CHECK(&players[i].nivel,sizeof(int),1,loadFile,loadFile,"nivel",filename); FREAD_CHECK(&players[i].exp,sizeof(int),1,loadFile,loadFile,"exp",filename);

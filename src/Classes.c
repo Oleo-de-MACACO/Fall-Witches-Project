@@ -1,8 +1,7 @@
 #include "../include/Classes.h"
-#include "../include/Inventory.h" // Necessário para TAB_INVENTORY
+#include "../include/Inventory.h"
 #include <string.h>
-#include <stddef.h> // Para NULL
-
+#include <stddef.h>
 
 void init_player_inventory(Player *p) {
     if (!p) return;
@@ -24,19 +23,12 @@ void init_player_equipment(Player *p) {
 void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, SpriteType sprite_type){
     if (!p) return;
 
-    // *** A CORREÇÃO DEFINITIVA ESTÁ AQUI ***
-    // 1. Salva a posição atual do jogador, que foi definida por PrepareNewGameSession.
     int oldPosX = p->posx;
     int oldPosY = p->posy;
-
-    // 2. Limpa a estrutura para definir valores padrão, o que anteriormente apagava a posição.
     memset(p, 0, sizeof(Player));
-
-    // 3. Restaura a posição salva, preservando o local de spawn correto.
     p->posx = oldPosX;
     p->posy = oldPosY;
 
-    // O resto da função continua normalmente, configurando a classe, nome e stats.
     p->classe = classe_jogador;
     p->spriteType = sprite_type;
 
@@ -82,4 +74,71 @@ void init_player(Player *p, const char *nome_jogador, Classe classe_jogador, Spr
     p->frameDuration = 0.15f;
     p->facingDir = DIR_DOWN;
     p->isMoving = false;
+}
+
+// --- CORREÇÃO: Implementada a função de level up ---
+void LevelUpPlayer(Player *player) {
+    if (!player) return;
+
+    // O jogador sobe de nível a cada 100 pontos de experiência
+    if (player->exp >= 100) {
+        player->nivel++;
+        player->exp -= 100; // Reseta o XP, mantendo o excedente
+
+        // Aumenta os atributos com base na classe do jogador
+        switch(player->classe) {
+            case GUERREIRO:
+                player->max_vida += 15;
+                player->ataque += 3;
+                player->defesa += 2;
+                player->forca += 2;
+                player->resistencia += 1;
+                break;
+            case MAGO:
+                player->max_vida += 8;
+                player->max_mana += 20;
+                player->magic_attack += 4;
+                player->magic_defense += 2;
+                player->inteligencia += 2;
+                break;
+            case ARQUEIRO:
+                player->max_vida += 10;
+                player->ataque += 2;
+                player->agilidade += 2;
+                player->percepcao += 1;
+                break;
+            case BARBARO:
+                player->max_vida += 20;
+                player->ataque += 4;
+                player->forca += 3;
+                player->resistencia += 2;
+                break;
+            case LADINO:
+                player->max_vida += 10;
+                player->ataque += 1;
+                player->agilidade += 3;
+                player->sorte += 1;
+                break;
+            case CLERIGO:
+                player->max_vida += 12;
+                player->max_mana += 15;
+                player->magic_attack += 2;
+                player->magic_defense += 2;
+                player->inteligencia += 1;
+                player->carisma += 1;
+                break;
+            default: // Caso genérico
+                player->max_vida += 10;
+                player->ataque += 1;
+                player->defesa += 1;
+                break;
+        }
+
+        // Restaura a vida e a mana do jogador ao subir de nível
+        player->vida = player->max_vida;
+        player->mana = player->max_mana;
+
+        // Log para confirmar o level up
+        TraceLog(LOG_INFO, "LEVEL UP! %s alcançou o nível %d!", player->nome, player->nivel);
+    }
 }

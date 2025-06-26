@@ -4,8 +4,6 @@
 #include "Classes.h"
 #include "CharacterManager.h"
 
-// Estrutura interna para manter o estado dos combatentes durante a batalha
-// Movida para o .h para que a UI possa acessá-la.
 typedef struct {
     char name[MAX_CHAR_NAME_LENGTH];
     int hp;
@@ -17,17 +15,18 @@ typedef struct {
     int magic_attack;
     int magic_defense;
     Classe class_id;
-    Player* original_player_ref; // Ponteiro para o jogador original
+    Player* original_player_ref;
 } BattleParticipant;
 
+// --- CORREÇÃO DA MÁQUINA DE ESTADOS ---
+// Removidos estados redundantes para uma lógica de turno mais clara.
 typedef enum {
-    BATTLE_STATE_STARTING,
-    BATTLE_STATE_PLAYER_TURN,
-    BATTLE_STATE_ENEMY_TURN_ACTION, // Fase onde a IA do inimigo age
-    BATTLE_STATE_TURN_TRANSITION,   // Pequena pausa entre os turnos
-    BATTLE_STATE_WIN,
-    BATTLE_STATE_LOSE,
-    BATTLE_STATE_ENDED,
+    BATTLE_STATE_STARTING,      // Início da batalha
+    BATTLE_STATE_PLAYER_TURN,   // Aguardando input do jogador
+    BATTLE_STATE_ENEMY_TURN,    // IA do inimigo age
+    BATTLE_STATE_WIN,           // Jogador venceu
+    BATTLE_STATE_LOSE,          // Jogador perdeu
+    BATTLE_STATE_ENDED,         // Batalha encerrada (fuga, etc.)
 } BattlePhase;
 
 void BattleSystem_Start(Player* players, int numPlayers, MapCharacter* enemy);
@@ -36,7 +35,6 @@ bool BattleSystem_IsActive(void);
 void BattleSystem_End(void);
 BattlePhase BattleSystem_GetPhase(void);
 
-// --- Novas Funções para a UI ---
 int BattleSystem_GetPlayerCount(void);
 const BattleParticipant* BattleSystem_GetPlayerParticipant(int index);
 const BattleParticipant* BattleSystem_GetEnemyParticipant(void);
@@ -44,5 +42,6 @@ int BattleSystem_GetCurrentTurnPlayerIndex(void);
 const char* BattleSystem_GetLastMessage(void);
 
 void BattleSystem_SetPlayerAction(int playerIndex, int moveIndex);
+bool BattleSystem_AttemptEscape(void);
 
 #endif // BATTLE_SYSTEM_H
