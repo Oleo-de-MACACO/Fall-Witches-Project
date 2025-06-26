@@ -1,7 +1,7 @@
 #ifndef BATTLE_UI_H
 #define BATTLE_UI_H
 
-#include "raylib.h"
+// #include "raylib.h" // Removido: Cabeçalho não utilizado diretamente
 
 /**
  * @brief Inicializa ou reinicia o estado da UI de batalha.

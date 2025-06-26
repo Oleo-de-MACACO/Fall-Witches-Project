@@ -21,7 +21,6 @@ typedef enum {
     GAMESTATE_PLAYING,
     GAMESTATE_PAUSE,
     GAMESTATE_INVENTORY,
-    // *** ADICIONADO: Novo estado para a batalha ***
     GAMESTATE_BATTLE
 } GameState;
 typedef enum { GAME_MODE_UNINITIALIZED = -1, GAME_MODE_SINGLE_PLAYER, GAME_MODE_TWO_PLAYER } GameModeType;
@@ -41,6 +40,12 @@ void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, in
 void InitGameResources(Player players_arr[], Music mainPlaylist_arr[]);
 void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY, int numActivePlayers, const WorldSection* worldSection);
 void DrawPlayingScreen(Player players_arr[], int numActivePlayers, float currentVolume, int currentMusicIndex, bool isPlaying, int currentMapX, int currentMapY);
-void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int numActivePlayers, Music playlist_arr[], int *currentMusicIndex_ptr, float *volume_ptr, bool *isPlaying_ptr, float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr, int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera, const WorldSection* activeSection);
+
+// CORREÇÃO: Nova função para reposicionar jogadores após a transição.
+void RepositionPlayersForTransition(Player players[], int numActivePlayers, BorderDirection direction, const WorldSection* newSection);
+
+// CORREÇÃO: A função de update agora retorna a direção da transição para o loop principal.
+BorderDirection UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int numActivePlayers, Music playlist_arr[], int *currentMusicIndex_ptr, float *volume_ptr, bool *isPlaying_ptr, float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr, int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera, const WorldSection* activeSection);
+
 
 #endif // GAME_H

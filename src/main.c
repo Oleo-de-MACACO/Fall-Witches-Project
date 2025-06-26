@@ -18,6 +18,7 @@
 #include "../include/WalkCycle.h"
 #include "../include/Sound.h"
 #include "../include/WorldLoading.h"
+#include "../include/WorldMap.h" // Incluído para a função de transição
 #include "../include/Event.h"
 #include "../include/Dialogue.h"
 #include "../include/GameProgress.h"
@@ -25,9 +26,9 @@
 #include "../include/BattleSystem.h"
 #include "../include/ClassSettings.h"
 #include "../include/BattleUI.h"
-#include "../include/EnemyLoader.h" // *** ADICIONADO ***
+#include "../include/EnemyLoader.h"
 
-// ... (todas as suas variáveis globais e constantes permanecem as mesmas) ...
+// ... (variáveis globais permanecem as mesmas) ...
 Player players[MAX_PLAYERS_SUPPORTED];
 GameState currentScreen;
 GameModeType currentGameMode = GAME_MODE_UNINITIALIZED;
@@ -51,7 +52,7 @@ int currentMusicIndex = 0;
 float musicPlayTimer = 0.0f;
 float currentTrackDuration = 0.0f;
 RenderTexture2D targetRenderTexture;
-Camera2D gameCamera = { .offset = {0.0f, 0.0f}, .target = {0.0f, 0.0f}, .rotation = 0.0f, .zoom = 1.0f };
+Camera2D gameCamera = { .offset = {0.0f, 0.0f}, .target = {0.0f, 0.0f}, .rotation = 0.0f, .zoom = 0.8f };
 WorldSection* currentActiveWorldSection = NULL;
 GameState* g_currentScreen_ptr = &currentScreen;
 Player* g_players_ptr = players;
@@ -89,7 +90,7 @@ int main(void) {
     Event_LoadAll("assets/Events/events.txt");
     Dialogue_LoadAll("assets/Dialogues/dialogues.txt");
     ClassSettings_LoadAll("assets/ClassSettings/Settings.txt");
-    EnemyLoader_LoadAll("assets/Enemies.txt"); // *** ADICIONADO ***
+    EnemyLoader_LoadAll("assets/Enemies.txt");
     CharManager_Init();
     
     UpdateCurrentlyPlayingMusicVolume();
@@ -101,7 +102,7 @@ int main(void) {
     gameCamera = (Camera2D){
         .offset = { (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f },
         .target = { (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f },
-        .rotation = 0.0f, .zoom = 1.0f
+        .rotation = 0.0f, .zoom = 0.8
     };
     currentScreen = GAMESTATE_INTRO;
     Progress_Reset();
@@ -120,6 +121,8 @@ int main(void) {
         Vector2 virtualMousePosition = GetVirtualMousePosition(GetMousePosition());
         int previousMapX = g_currentMapX;
         int previousMapY = g_currentMapY;
+        // CORREÇÃO: Variável para guardar a direção da transição ocorrida.
+        BorderDirection transitionDirection = BORDER_NONE;
 
         if (currentScreen == GAMESTATE_PLAYING && Menu_IsNewGameFlow()) {
             Progress_Reset();
@@ -154,7 +157,8 @@ int main(void) {
                 case GAMESTATE_PAUSE: UpdatePauseScreen(&currentScreen, players, gamePlaylist, currentMusicIndex, isMusicPlaying, &isMusicPlaying, virtualMousePosition); break;
                 case GAMESTATE_INVENTORY: UpdateInventoryScreen(&currentScreen, players, &isMusicPlaying, gamePlaylist, &currentMusicIndex); break;
                 case GAMESTATE_PLAYING:
-                    UpdatePlayingScreen(&currentScreen, players, currentActivePlayers, gamePlaylist, &currentMusicIndex, &gameplayMusicVolume, &isMusicPlaying, &musicPlayTimer, &currentTrackDuration, &g_currentMapX, &g_currentMapY, &gameCamera, currentActiveWorldSection);
+                    // CORREÇÃO: A função de update agora retorna a direção da transição.
+                    transitionDirection = UpdatePlayingScreen(&currentScreen, players, currentActivePlayers, gamePlaylist, &currentMusicIndex, &gameplayMusicVolume, &isMusicPlaying, &musicPlayTimer, &currentTrackDuration, &g_currentMapX, &g_currentMapY, &gameCamera, currentActiveWorldSection);
                     CharManager_Update(&players[0], currentActiveWorldSection);
                     CharManager_CheckInteraction(&players[0]);
                     Event_CheckAndRun(g_currentMapX, g_currentMapY);
@@ -163,13 +167,17 @@ int main(void) {
             }
         }
         
+        // CORREÇÃO: Este bloco agora também reposiciona o jogador usando as dimensões do novo mapa.
         if (g_currentMapX != previousMapX || g_currentMapY != previousMapY) {
             if (currentActiveWorldSection) { UnloadWorldSection(currentActiveWorldSection); }
             CharManager_UnloadAll();
             currentActiveWorldSection = LoadWorldSection(g_currentMapX, g_currentMapY);
             if(currentActiveWorldSection) {
+                RepositionPlayersForTransition(players, currentActivePlayers, transitionDirection, currentActiveWorldSection);
                 CharManager_LoadNpcsForMap();
                 CharManager_CacheSpritesForMap();
+                // Tenta gerar um inimigo assim que o mapa é carregado.
+                CharManager_TryInitialSpawn(currentActiveWorldSection);
             }
         }
 
@@ -184,7 +192,7 @@ int main(void) {
                         else { ClearBackground(PURPLE); DrawText("ERRO: SECAO NAO CARREGADA", 10,10,20,WHITE); }
                         CharManager_Draw();
                         DrawPlayingScreen(players, currentActivePlayers, gameplayMusicVolume * masterVolume, currentMusicIndex, isMusicPlaying, g_currentMapX, g_currentMapY);
-                        DrawWorldSectionDebug(currentActiveWorldSection);
+                        // DrawWorldSectionDebug(currentActiveWorldSection); // Descomente para depurar colisões
                     EndMode2D();
                     if(currentScreen == GAMESTATE_PAUSE) DrawPauseMenuElements();
                     if(currentScreen == GAMESTATE_INVENTORY) DrawInventoryUIElements(players);
@@ -215,8 +223,7 @@ int main(void) {
     CharManager_UnloadAll();
     Dialogue_UnloadAll();
     Event_UnloadAll();
-    // ClassSettings_UnloadAll(); // Descomentar se alocar memória
-    EnemyLoader_UnloadAll(); // *** ADICIONADO ***
+    EnemyLoader_UnloadAll();
     UnloadGameAudio();
     UnloadRenderTexture(targetRenderTexture);
     for (int i=0; i<MAX_PLAYERS_SUPPORTED; i++) { UnloadCharacterAnimations(&players[i]); }

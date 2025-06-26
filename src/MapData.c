@@ -5,8 +5,8 @@
 #include <ctype.h>
 
 // --- Armazenamento Estático para os Dados do Mapa Atual ---
-// *** CORRIGIDO: Usa {0} para inicializar a struct inteira, uma forma padrão e segura em C. ***
-static MapConfig s_currentMapConfig = {0};
+// CORREÇÃO: Inicializa a struct inteira para evitar campos não inicializados.
+static MapConfig s_currentMapConfig = { .isLoaded = false, .enemySpawnChance = 0, .numAllowedMusicCategories = 0 };
 static NpcConfig s_npcConfigs[MAX_NPC_CONFIGS_PER_MAP];
 static int s_npcConfigCount = 0;
 static EnemyTypeConfig s_enemyTypeConfigs[MAX_ENEMY_TYPES_PER_MAP];
@@ -78,11 +78,11 @@ void MapData_LoadForMap(int mapX, int mapY) {
         if (strcmp(line, "npc_start") == 0) { parseState = 1; continue; }
         if (strcmp(line, "enemy_type_start") == 0) { parseState = 2; continue; }
         if (strcmp(line, "allowed_music_start") == 0) { parseState = 3; continue; }
-        
+
         if (strcmp(line, "npc_end") == 0 && parseState == 1) { s_npcConfigCount++; parseState = 0; continue; }
         if (strcmp(line, "enemy_type_end") == 0 && parseState == 2) { s_enemyTypeConfigCount++; parseState = 0; continue; }
         if (strcmp(line, "allowed_music_end") == 0 && parseState == 3) { parseState = 0; continue; }
-        
+
         if (parseState == 3) {
             if (s_currentMapConfig.numAllowedMusicCategories < MAX_ALLOWED_MUSIC_CATEGORIES) {
                 s_currentMapConfig.allowedMusic[s_currentMapConfig.numAllowedMusicCategories++] = StringToMusicCategory(line);

@@ -132,11 +132,35 @@ void CharManager_LoadNpcsForMap(void) {
     }
 }
 
+/**
+ * @brief ADICIONADO: Realiza o spawn inicial de inimigos ao carregar o mapa.
+ */
+void CharManager_InitialSpawn(const WorldSection* activeSection) {
+    if (!activeSection) return;
+    const MapConfig* mapConfig = MapData_GetConfig();
+    // Verifica se o mapa foi carregado e se há uma chance de spawn.
+    if (!mapConfig || !mapConfig->isLoaded || mapConfig->enemySpawnChance <= 0) {
+        return;
+    }
+
+    // Define um número aleatório de inimigos para o spawn inicial.
+    int numToSpawn = GetRandomValue(1, 3);
+    TraceLog(LOG_INFO, "Tentando spawn inicial de %d inimigos.", numToSpawn);
+
+    for (int i = 0; i < numToSpawn; i++) {
+        // Usa a chance de spawn para cada tentativa de criação de inimigo.
+        if (GetRandomValue(1, 100) <= mapConfig->enemySpawnChance) {
+            SpawnRandomEnemy(activeSection);
+        }
+    }
+}
+
 void CharManager_Update(Player* player, const WorldSection* activeSection) {
     if (!player || !activeSection) return;
     const MapConfig* mapConfig = MapData_GetConfig();
     if (!mapConfig || !mapConfig->isLoaded) return;
     
+    // O timer continua a funcionar para respawns periódicos.
     s_spawnCheckTimer += GetFrameTime();
     if (s_spawnCheckTimer >= SPAWN_CHECK_INTERVAL) {
         s_spawnCheckTimer = 0.0f;
@@ -150,7 +174,6 @@ void CharManager_Update(Player* player, const WorldSection* activeSection) {
             Rectangle playerRect = {(float)player->posx, (float)player->posy, (float)player->width, (float)player->height};
             Rectangle enemyRect = {enemy->position.x, enemy->position.y, (float)enemy->width, (float)enemy->height};
             if (CheckCollisionRecs(playerRect, enemyRect)) {
-                // *** CORREÇÃO: Passa os ponteiros globais corretos. ***
                 CharManager_TriggerBattle(g_players_ptr, *g_currentActivePlayers_ptr, enemy, g_currentScreen_ptr);
                 enemy->isActive = false; 
                 break;

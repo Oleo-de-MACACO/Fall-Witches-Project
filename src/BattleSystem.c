@@ -1,8 +1,8 @@
 #include "../include/BattleSystem.h"
 #include "../include/ClassSettings.h"
-#include "../include/GameProgress.h"
+#include "../include/GameProgress.h" // Incluído para funções de progresso
 #include "../include/EnemyLoader.h"
-#include "../include/Game.h"       // *** CORREÇÃO: Adicionado para MAX_PLAYERS_SUPPORTED ***
+#include "../include/Game.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -76,7 +76,7 @@ static void ProcessPlayerAction(int playerIndex, int moveIndex) {
 
     if (!moveset || moveIndex < 0 || moveIndex >= moveset->move_count) return;
     const Move* move = &moveset->moves[moveIndex];
-    
+
     if (attacker->mana < move->mana_cost) {
         SetBattleMessage(TextFormat("%s não tem mana suficiente!", attacker->name));
         return;
@@ -88,17 +88,17 @@ static void ProcessPlayerAction(int playerIndex, int moveIndex) {
         SetBattleMessage(TextFormat("%s tentou usar %s, mas falhou!", attacker->name, move->name));
         return;
     }
-    
+
     int base_damage = 0;
     if (move->type == MOVE_TYPE_PHYSICAL) base_damage = (int)((float)attacker->attack * move->power_multiplier) - target->defense;
     else if (move->type == MOVE_TYPE_MAGICAL) base_damage = (int)((float)attacker->magic_attack * move->power_multiplier) - target->magic_defense;
-    
+
     float damage_mod = 1.0f + ((float)d20_roll - 10.5f) / 20.0f;
     if(d20_roll == 20) { damage_mod = 2.0f; }
 
     int final_damage = (int)((float)base_damage * damage_mod);
     if (final_damage < 1) final_damage = 1;
-    
+
     if (d20_roll == 20) SetBattleMessage(TextFormat("ACERTO CRÍTICO! %s usa %s!", attacker->name, move->name));
     else SetBattleMessage(TextFormat("%s usa %s.", attacker->name, move->name));
 
@@ -108,7 +108,7 @@ static void ProcessPlayerAction(int playerIndex, int moveIndex) {
 static void ProcessEnemyAction() {
     BattleParticipant* attacker = &s_enemyParticipant;
     BattleParticipant* target = NULL;
-    
+
     int alive_player_indices[MAX_PLAYERS_SUPPORTED];
     int alive_count = 0;
     for(int i = 0; i < s_playerParticipantCount; i++){
@@ -135,7 +135,7 @@ void BattleSystem_Start(Player* players, int numPlayers, MapCharacter* enemy) {
     s_playerParticipantCount = numPlayers;
     for (int i = 0; i < numPlayers; i++) { SetupPlayerParticipant(i, &players[i]); }
     SetupEnemyParticipant(enemy);
-    
+
     s_isBattleActive = true;
     s_currentPhase = BATTLE_STATE_STARTING;
     s_currentPlayerTurn = 0;
@@ -198,11 +198,15 @@ void BattleSystem_Update(void) {
 }
 
 void BattleSystem_End(void) {
+    // COMENTADO: Funções não declaradas que causam erro de compilação, vai ser uma implementação futura, não agora nessa versão
+    /*
     if(s_currentPhase == BATTLE_STATE_WIN) {
-        Progress_AddExp(50); Progress_AddCoins(20);
+        Progress_AddExp(50);
+        Progress_AddCoins(20);
     } else if (s_currentPhase == BATTLE_STATE_LOSE) {
         Progress_AddCoins(-10);
     }
+    */
     ApplyBattleResults();
     s_isBattleActive = false;
     s_currentPhase = BATTLE_STATE_ENDED;

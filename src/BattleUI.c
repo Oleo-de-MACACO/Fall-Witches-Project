@@ -1,7 +1,7 @@
 #include "../include/BattleUI.h"
 #include "../include/BattleSystem.h" // Para obter o estado da batalha
 #include "../include/ClassSettings.h"
-#include <stdio.h>
+// #include <stdio.h> // Removido: Cabeçalho não utilizado
 
 // --- Constantes de Layout da UI ---
 #define FONT_SIZE 20
@@ -28,11 +28,11 @@ static void DrawStatusBox(Rectangle box, const BattleParticipant* participant) {
     DrawRectangleRec(box, Fade(DARKBLUE, 0.8f));
     DrawRectangleLinesEx(box, 2, SKYBLUE);
 
-    if (!participant || participant->hp <= 0 && s_uiState != UI_STATE_BATTLE_OVER) {
+    if (!participant || (participant->hp <= 0 && s_uiState != UI_STATE_BATTLE_OVER)) { // Adicionado parênteses para clareza
          DrawText("Derrotado", (int)box.x + PADDING, (int)box.y + PADDING, FONT_SIZE, GRAY);
         return;
     }
-    
+
     DrawText(participant->name, (int)box.x + PADDING, (int)box.y + PADDING, FONT_SIZE, WHITE);
     DrawText(TextFormat("HP: %d / %d", participant->hp, participant->max_hp), (int)box.x + PADDING, (int)box.y + PADDING + 25, FONT_SIZE, participant->hp < participant->max_hp / 4 ? RED : GREEN);
     DrawText(TextFormat("MP: %d / %d", participant->mana, participant->max_mana), (int)box.x + PADDING, (int)box.y + PADDING + 50, FONT_SIZE, BLUE);
@@ -62,19 +62,20 @@ static void DrawMoveSelectionMenu(const ClassMoveset* moveset, int selection) {
 
     for (int i = 0; i < moveset->move_count; i++) {
         Color color = (i == selection) ? YELLOW : WHITE;
-        DrawText(TextFormat("%s %s (MP: %d)", (i == selection) ? "->" : "  ", moveset->moves[i].name, moveset->moves[i].mana_cost), 
+        DrawText(TextFormat("%s %s (MP: %d)", (i == selection) ? "->" : "  ", moveset->moves[i].name, moveset->moves[i].mana_cost),
                  (int)box.x + PADDING, (int)box.y + PADDING + 35 + (i * 30), FONT_SIZE, color);
     }
 }
 
 static void DrawMessageBox(const char* message) {
-    Rectangle box = { PADDING, 450 - 120, 800 - (PADDING * 2), 110 };
+    // CORREÇÃO: Convertido para float para evitar erro de narrowing
+    Rectangle box = { (float)PADDING, (float)(450 - 120), (float)(800 - (PADDING * 2)), 110.0f };
     DrawRectangleRec(box, Fade(BLACK, 0.8f));
     DrawRectangleLinesEx(box, 2, WHITE);
     DrawText(message, (int)box.x + PADDING, (int)box.y + PADDING, FONT_SIZE, WHITE);
 
     // Prompt piscante
-    if (((int)(GetTime() * 2.0f)) % 2 == 0) { 
+    if (((int)(GetTime() * 2.0f)) % 2 == 0) {
         DrawText("Pressione ENTER...", (int)(box.x + box.width - 200), (int)(box.y + box.height - 30), FONT_SIZE-5, LIGHTGRAY);
     }
 }
@@ -157,7 +158,7 @@ void BattleUI_Draw(void) {
             DrawStatusBox(playerBox, player);
         }
     }
-    
+
     // Desenha o menu ou mensagem apropriado
     BattlePhase phase = BattleSystem_GetPhase();
     const char* message = BattleSystem_GetLastMessage();

@@ -1,6 +1,6 @@
 #include "../include/EnemyAI.h"
-#include "../include/CharacterManager.h" // *** CORREÇÃO: Incluído para a definição completa de MapCharacter ***
-#include "../include/Classes.h"          // *** CORREÇÃO: Incluído para a definição completa de Player ***
+#include "../include/CharacterManager.h"
+#include "../include/Classes.h"
 #include "raymath.h"
 #include <stdlib.h>
 
@@ -33,8 +33,9 @@ void EnemyAI_Update(MapCharacter* enemy, Player* player, const WorldSection* act
                     enemy->data.enemy.moveTimer = 0.0f;
                     int moveX = GetRandomValue(-1, 1) * 10;
                     int moveY = GetRandomValue(-1, 1) * 10;
-                    
-                    Rectangle futureRect = {enemy->position.x + moveX, enemy->position.y + moveY, (float)enemy->width, (float)enemy->height};
+
+                    // CORREÇÃO: Conversão explícita para float
+                    Rectangle futureRect = {enemy->position.x + (float)moveX, enemy->position.y + (float)moveY, (float)enemy->width, (float)enemy->height};
                     bool willCollide = false;
                     for(int i = 0; i < activeSection->collisionRectCount; i++){
                         if(CheckCollisionRecs(futureRect, activeSection->collisionRects[i])){
@@ -43,8 +44,8 @@ void EnemyAI_Update(MapCharacter* enemy, Player* player, const WorldSection* act
                         }
                     }
                     if(!willCollide){
-                        enemy->position.x += moveX;
-                        enemy->position.y += moveY;
+                        enemy->position.x += (float)moveX;
+                        enemy->position.y += (float)moveY;
                     }
                 }
             }
@@ -58,7 +59,7 @@ void EnemyAI_Update(MapCharacter* enemy, Player* player, const WorldSection* act
                 Vector2 direction = Vector2Normalize(Vector2Subtract(playerPos, enemyPos));
                 float moveX = direction.x * ENEMY_SPEED;
                 float moveY = direction.y * ENEMY_SPEED;
-                
+
                 Rectangle futureRect = {enemy->position.x + moveX, enemy->position.y + moveY, (float)enemy->width, (float)enemy->height};
                 bool willCollide = false;
                 for(int i = 0; i < activeSection->collisionRectCount; i++){
@@ -73,7 +74,7 @@ void EnemyAI_Update(MapCharacter* enemy, Player* player, const WorldSection* act
                 }
             }
             break;
-        
+
         case AI_STATE_COOLDOWN:
             enemy->data.enemy.aiState = AI_STATE_IDLE;
             break;

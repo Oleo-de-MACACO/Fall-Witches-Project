@@ -36,8 +36,8 @@ static Music onDemandMusicTrack;
 static bool  onDemandMusicLoaded = false;
 
 // --- Estado da Música Atualmente Tocando ---
-// *** CORRIGIDO: Inicializador explícito e completo para a struct Music para evitar warnings ***
-static Music currentPlayingMusic = { .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
+// CORREÇÃO: Inicializador explícito e completo para a struct Music para evitar warnings
+static Music currentPlayingMusic = {{0}};
 static MusicCategory currentPlayingCategory = MUSIC_CATEGORY_COUNT;
 static int currentPlayingTrackIndex = -1;
 static bool isCurrentMusicPaused = false;
@@ -147,7 +147,7 @@ void UpdateAudioStreams(void) {
 
 void StopCurrentMusic(void) {
     if (currentPlayingMusic.stream.buffer != NULL ) { StopMusicStream(currentPlayingMusic); }
-    currentPlayingMusic = (Music){ .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
+    currentPlayingMusic = (Music){{0}}; // Inicialização para zerar a struct
     currentPlayingTrackIndex = -1;
     currentPlayingCategory = MUSIC_CATEGORY_COUNT; isCurrentMusicPaused = false;
 }
@@ -170,7 +170,7 @@ void PlayMusicTrack(MusicCategory category, int trackIndex, bool loop) {
         SetMusicVolume(currentPlayingMusic, GetEffectiveVolumeForCategory(category));
         currentPlayingCategory = category; currentPlayingTrackIndex = trackIndex; isCurrentMusicPaused = false;
     } else {
-        currentPlayingMusic = (Music){ .stream = {0}, .frameCount = 0, .looping = false, .ctxType = 0, .ctxData = NULL };
+        currentPlayingMusic = (Music){{0}}; // Inicialização para zerar a struct
     }
 }
 

@@ -3,8 +3,8 @@
 
 #include "Classes.h"
 #include "WorldLoading.h"
-#include "EnemyAI.h"      // *** CORREÇÃO: Inclui a definição de EnemyAIState em vez de redefini-la. ***
-#include "Game.h"         // *** CORREÇÃO: Incluído para o tipo GameState. ***
+#include "EnemyAI.h"      
+#include "Game.h"         
 
 #define MAX_MAP_CHARACTERS 16
 
@@ -50,13 +50,19 @@ void CharManager_Draw(void);
 void CharManager_CheckInteraction(Player* player);
 
 /**
+ * @brief Tenta gerar um inimigo imediatamente, respeitando a chance de spawn do mapa.
+ * Ideal para ser chamada ao entrar em um novo mapa.
+ * @param activeSection A seção do mundo onde o inimigo deve ser gerado.
+ */
+void CharManager_TryInitialSpawn(const WorldSection* activeSection);
+
+/**
  * @brief Inicia uma batalha.
  * @param players Ponteiro para o array de jogadores.
  * @param numPlayers Número de jogadores ativos.
  * @param enemy O inimigo encontrado.
  * @param screen_ptr Ponteiro para o estado de tela atual do jogo.
  */
-// *** CORREÇÃO: A assinatura da função foi atualizada para corresponder à sua chamada. ***
 void CharManager_TriggerBattle(Player* players, int numPlayers, MapCharacter* enemy, GameState* screen_ptr);
 
 #endif // CHARACTER_MANAGER_H

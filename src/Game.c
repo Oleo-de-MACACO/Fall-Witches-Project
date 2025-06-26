@@ -18,17 +18,20 @@ extern const int gameSectionHeightMultiplier;
 void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numActivePlayers, float sectionActualWidth, float sectionActualHeight) {
     if (!camera || !players || numActivePlayers <= 0 || sectionActualWidth <= 0 || sectionActualHeight <= 0) return;
 
+    // Constantes de zoom
     const float TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM = 320.0f;
     const float MAX_CAMERA_ZOOM = (TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM > 0) ? ((float)virtualScreenWidth / TARGET_VISIBLE_WIDTH_AT_MAX_ZOOM) : 1.0f;
+    // CORREÇÃO: Aumentado o zoom mínimo para manter a câmera mais próxima.
+    const float ABSOLUTE_MIN_ZOOM = 0.8f; 
 
     float zoomToFitWidth = (float)virtualScreenWidth / sectionActualWidth;
     float zoomToFitHeight = (float)virtualScreenHeight / sectionActualHeight;
-    const float MIN_CAMERA_ZOOM_FIT_SECTION = fminf(zoomToFitWidth, zoomToFitHeight);
+    float minZoomToFitSection = fminf(zoomToFitWidth, zoomToFitHeight);
 
     if (numActivePlayers == 1) {
         camera->target.x = (float)players[0].posx + ((float)players[0].width / 2.0f);
         camera->target.y = (float)players[0].posy + ((float)players[0].height / 2.0f);
-        camera->zoom = 1.2f;
+        camera->zoom = 0.8f; 
     } else if (numActivePlayers >= 2) {
         camera->target.x = (((float)players[0].posx + ((float)players[0].width / 2.0f)) + ((float)players[1].posx + ((float)players[1].width / 2.0f))) / 2.0f;
         camera->target.y = (((float)players[0].posy + ((float)players[0].height / 2.0f)) + ((float)players[1].posy + ((float)players[1].height / 2.0f))) / 2.0f;
@@ -43,7 +46,10 @@ void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numAc
         camera->zoom = fminf(zoomRequiredX, zoomRequiredY);
     }
 
-    if (camera->zoom < MIN_CAMERA_ZOOM_FIT_SECTION) camera->zoom = MIN_CAMERA_ZOOM_FIT_SECTION;
+    // Aplica o maior dos dois limites mínimos de zoom.
+    float effectiveMinZoom = fmaxf(minZoomToFitSection, ABSOLUTE_MIN_ZOOM);
+    if (camera->zoom < effectiveMinZoom) camera->zoom = effectiveMinZoom;
+    
     if (camera->zoom > MAX_CAMERA_ZOOM) camera->zoom = MAX_CAMERA_ZOOM;
     
     float visibleWorldHalfWidth = ((float)virtualScreenWidth / camera->zoom) / 2.0f;
@@ -56,11 +62,6 @@ void UpdateCameraCenteredOnPlayers(Camera2D *camera, Player players[], int numAc
     camera->offset = (Vector2){ (float)virtualScreenWidth / 2.0f, (float)virtualScreenHeight / 2.0f };
 }
 
-/**
- * @brief Movimenta um personagem, checando colisões.
- * @note Esta é uma versão reescrita e simplificada para corrigir o bug de movimento.
- * Move o personagem de uma só vez por eixo e verifica a colisão, em vez de um loop pixel a pixel.
- */
 void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, int keyDown, int keyShift, const WorldSection* activeSection) {
     if (!player_obj || !activeSection || !activeSection->isLoaded) return;
 
@@ -76,43 +77,37 @@ void move_character(Player *player_obj, int keyLeft, int keyRight, int keyUp, in
     if (IsKeyDown(keyUp))    deltaY -= (float)currentSpeed;
     if (IsKeyDown(keyDown))  deltaY += (float)currentSpeed;
 
-    // --- Movimento no Eixo X ---
     if (deltaX != 0) {
         int originalX = player_obj->posx;
         player_obj->posx += (int)deltaX;
 
-        // *** CORREÇÃO: Usava 'originalY' antes de ser declarado. Deve usar a posição Y atual do jogador. ***
         Rectangle playerRect = { (float)player_obj->posx, (float)player_obj->posy, (float)player_obj->width, (float)player_obj->height };
         for (int i = 0; i < activeSection->collisionRectCount; i++) {
             if (CheckCollisionRecs(playerRect, activeSection->collisionRects[i])) {
-                player_obj->posx = originalX; // Reverte o movimento se houver colisão
+                player_obj->posx = originalX;
                 break;
             }
         }
     }
 
-    // --- Movimento no Eixo Y ---
     if (deltaY != 0) {
         int originalY = player_obj->posy;
         player_obj->posy += (int)deltaY;
 
-        // Checa colisão após o movimento em Y
         Rectangle playerRect = { (float)player_obj->posx, (float)player_obj->posy, (float)player_obj->width, (float)player_obj->height };
         for (int i = 0; i < activeSection->collisionRectCount; i++) {
             if (CheckCollisionRecs(playerRect, activeSection->collisionRects[i])) {
-                player_obj->posy = originalY; // Reverte o movimento se houver colisão
+                player_obj->posy = originalY;
                 break;
             }
         }
     }
 
-    // Garante que o jogador permaneça dentro dos limites do mapa
     if (player_obj->posx < 0) player_obj->posx = 0;
     if (player_obj->posx > activeSection->width - player_obj->width) player_obj->posx = activeSection->width - player_obj->width;
     if (player_obj->posy < 0) player_obj->posy = 0;
     if (player_obj->posy > activeSection->height - player_obj->height) player_obj->posy = activeSection->height - player_obj->height;
 }
-
 
 void InitGameResources(Player players_arr[], Music mainPlaylist_arr[]) { (void)mainPlaylist_arr; if(players_arr == NULL) return; }
 
@@ -147,7 +142,41 @@ void PrepareNewGameSession(Player players_arr[], int *mapX, int *mapY, int numAc
     }
 }
 
-void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int numActivePlayers,
+// CORREÇÃO: Nova função para posicionar o jogador corretamente após uma transição de mapa.
+void RepositionPlayersForTransition(Player players[], int numActivePlayers, BorderDirection direction, const WorldSection* newSection) {
+    if (!newSection || !newSection->isLoaded || numActivePlayers <= 0 || direction == BORDER_NONE) {
+        return;
+    }
+
+    Player* p = &players[0];
+    const int tolerance = 10; // Uma pequena margem para não nascer colado na borda.
+
+    switch (direction) {
+        case BORDER_LEFT: // Veio da direita no mapa anterior, então aparece na esquerda deste mapa
+            p->posx = (int)(newSection->width - (float)p->width - (float)tolerance);
+            break;
+        case BORDER_RIGHT: // Veio da esquerda no mapa anterior
+            p->posx = (int)tolerance;
+            break;
+        case BORDER_TOP: // Veio de baixo no mapa anterior
+            p->posy = (int)(newSection->height - (float)p->height - (float)tolerance);
+            break;
+        case BORDER_BOTTOM: // Veio de cima no mapa anterior
+            p->posy = (int)tolerance;
+            break;
+        default:
+            break;
+    }
+
+    // Reposiciona o segundo jogador (se houver) perto do primeiro.
+    if (numActivePlayers > 1) {
+        players[1].posx = p->posx;
+        players[1].posy = p->posy;
+    }
+}
+
+// CORREÇÃO: A função agora retorna a direção da transição.
+BorderDirection UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int numActivePlayers,
                          Music playlist_arr[], int *currentMusicIndex_ptr, float *volume_ptr, bool *isPlaying_ptr,
                          float *musicPlayingTimer_ptr, float *currentMusicDuration_ptr,
                          int *currentMapX_ptr, int *currentMapY_ptr, Camera2D *gameCamera,
@@ -155,7 +184,7 @@ void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int
     (void)playlist_arr; (void)currentMusicIndex_ptr; (void)volume_ptr; (void)isPlaying_ptr;
     (void)musicPlayingTimer_ptr; (void)currentMusicDuration_ptr;
 
-    if (!currentScreen_ptr || !activeSection || !activeSection->isLoaded) { return; }
+    if (!currentScreen_ptr || !activeSection || !activeSection->isLoaded) { return BORDER_NONE; }
     
     int oldPosX[MAX_PLAYERS_SUPPORTED] = {0}; int oldPosY[MAX_PLAYERS_SUPPORTED] = {0};
     for (int i = 0; i < numActivePlayers; i++) { oldPosX[i] = players_arr[i].posx; oldPosY[i] = players_arr[i].posy; }
@@ -174,12 +203,26 @@ void UpdatePlayingScreen(GameState *currentScreen_ptr, Player players_arr[], int
         UpdateWalkCycle(&players_arr[i], isMovingNow, mX, mY);
     }
 
-    // *** CORREÇÃO: A chamada para atualizar a câmera foi restaurada. ***
     UpdateCameraCenteredOnPlayers(gameCamera, players_arr, numActivePlayers, (float)activeSection->width, (float)activeSection->height);
-    WorldMap_CheckTransition(players_arr, numActivePlayers, currentMapX_ptr, currentMapY_ptr, currentGameMode, (float)activeSection->width, (float)activeSection->height);
+    
+    // CORREÇÃO: A lógica de transição foi movida para cá para orquestrar a mudança.
+    BorderDirection transition = WorldMap_CheckTransition(&players_arr[0], *currentMapX_ptr, *currentMapY_ptr, (float)activeSection->width, (float)activeSection->height);
+
+    if (transition != BORDER_NONE) {
+        switch (transition) {
+            case BORDER_LEFT: (*currentMapX_ptr)--; break;
+            case BORDER_RIGHT: (*currentMapX_ptr)++; break;
+            case BORDER_TOP: (*currentMapY_ptr)--; break;
+            case BORDER_BOTTOM: (*currentMapY_ptr)++; break;
+            default: break;
+        }
+    }
     
     if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE)) { *currentScreen_ptr = GAMESTATE_PAUSE; }
     if (IsKeyPressed(KEY_E)) { *currentScreen_ptr = GAMESTATE_INVENTORY; }
+
+    // Retorna a direção da transição para que o loop principal possa usar.
+    return transition;
 }
 
 void DrawPlayingScreen(Player players_arr[], int numActivePlayers, float currentVolume, int currentMusicIndex, bool isPlaying, int currentMapX, int currentMapY) {
