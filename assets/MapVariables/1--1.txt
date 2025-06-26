@@ -1,0 +1,10 @@
+# Configurações para o mapa (1, -1) - Pântano do Golem
+
+# Define a chance de um inimigo surgir neste mapa (de 0 a 100)
+enemy_spawn_chance: 100
+
+# Define os tipos de inimigos que podem aparecer aqui
+enemy_type_start
+    name: Golem
+    sprite_folder: golem
+enemy_type_end

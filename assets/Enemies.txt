@@ -1,0 +1,38 @@
+// Stats for each enemy type.
+// Format:
+// [EnemyName]
+// specialty=CLASS_NAME
+// hp=value
+// mp=value
+// atk=value
+// def=value
+// matk=value
+// mdef=value
+
+[Goblin]
+specialty=GUERREIRO
+hp=40
+mp=5
+atk=12
+def=8
+matk=3
+mdef=3
+
+[Golem]
+specialty=GUERREIRO
+hp=150
+mp=20
+atk=25
+def=40
+matk=5
+mdef=30
+
+[Witch]
+specialty=MAGO
+hp=100
+mp=200
+atk=15
+def=20
+matk=50
+mdef=45
+
